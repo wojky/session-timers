@@ -120,238 +120,104 @@
     </section>
 
     <!-- Timers grid -->
-    <main class="flex-1 min-h-0 flex flex-col gap-3" id="timers-container">
+    <main class="flex-1 min-h-0 flex flex-col gap-3 max-w-[720px] w-full mx-auto" id="timers-container">
+
       <!-- Timer: Martwy czas -->
-      <div
-        class="timer-card flex-1 flex items-center gap-3 bg-slate-800 rounded-2xl px-4 border border-slate-700 transition-all duration-200"
-        data-timer-id="dead"
-      >
-        <!-- indicator -->
-        <div
-          class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator flex-shrink-0"
-        ></div>
-        <!-- label + badge -->
-        <div class="flex flex-col min-w-0 flex-1">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400 truncate"
-            >Martwy czas</span
-          >
-          <span
-            class="timer-status-badge text-xs font-medium text-slate-500 leading-tight"
-            >Zatrzymany</span
-          >
+      <div class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200" data-timer-id="dead">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Martwy czas</span>
+          <div class="flex items-center gap-2">
+            <span class="timer-status-badge text-xs font-medium text-slate-500">Zatrzymany</span>
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator"></div>
+          </div>
         </div>
-        <!-- time input -->
-        <input
-          type="text"
-          class="timer-display w-24 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors flex-shrink-0"
-          value="00:00"
-          maxlength="5"
-          aria-label="Czas: Martwy czas"
-        />
-        <!-- buttons -->
-        <button
-          class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0"
-        >
-          <svg
-            class="icon-play w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <svg
-            class="icon-pause w-4 h-4 hidden"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-          <span class="toggle-label">Start</span>
-        </button>
-        <button
-          class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
-          aria-label="Resetuj"
-          title="Resetuj timer"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
-            />
-          </svg>
-        </button>
+        <div class="flex items-center gap-3">
+          <input type="text"
+            class="timer-display flex-1 min-w-0 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors"
+            value="00:00" maxlength="5" aria-label="Czas: Martwy czas" />
+          <button class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
+            <svg class="icon-play w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="icon-pause w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <span class="toggle-label">Start</span>
+          </button>
+          <button class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0" aria-label="Resetuj" title="Resetuj timer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Timer: Czas aktywny -->
-      <div
-        class="timer-card flex-1 flex items-center gap-3 bg-slate-800 rounded-2xl px-4 border border-slate-700 transition-all duration-200"
-        data-timer-id="active"
-      >
-        <div
-          class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator flex-shrink-0"
-        ></div>
-        <div class="flex flex-col min-w-0 flex-1">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400 truncate"
-            >Czas aktywny</span
-          >
-          <span
-            class="timer-status-badge text-xs font-medium text-slate-500 leading-tight"
-            >Zatrzymany</span
-          >
+      <div class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200" data-timer-id="active">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Czas aktywny</span>
+          <div class="flex items-center gap-2">
+            <span class="timer-status-badge text-xs font-medium text-slate-500">Zatrzymany</span>
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator"></div>
+          </div>
         </div>
-        <input
-          type="text"
-          class="timer-display w-24 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors flex-shrink-0"
-          value="00:00"
-          maxlength="5"
-          aria-label="Czas: Czas aktywny"
-        />
-        <button
-          class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0"
-        >
-          <svg
-            class="icon-play w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <svg
-            class="icon-pause w-4 h-4 hidden"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-          <span class="toggle-label">Start</span>
-        </button>
-        <button
-          class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
-          aria-label="Resetuj"
-          title="Resetuj timer"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
-            />
-          </svg>
-        </button>
+        <div class="flex items-center gap-3">
+          <input type="text"
+            class="timer-display flex-1 min-w-0 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors"
+            value="00:00" maxlength="5" aria-label="Czas: Czas aktywny" />
+          <button class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
+            <svg class="icon-play w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="icon-pause w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <span class="toggle-label">Start</span>
+          </button>
+          <button class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0" aria-label="Resetuj" title="Resetuj timer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Timer: Coaching -->
-      <div
-        class="timer-card flex-1 flex items-center gap-3 bg-slate-800 rounded-2xl px-4 border border-slate-700 transition-all duration-200"
-        data-timer-id="coaching"
-      >
-        <div
-          class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator flex-shrink-0"
-        ></div>
-        <div class="flex flex-col min-w-0 flex-1">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400 truncate"
-            >Coaching</span
-          >
-          <span
-            class="timer-status-badge text-xs font-medium text-slate-500 leading-tight"
-            >Zatrzymany</span
-          >
+      <div class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200" data-timer-id="coaching">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Coaching</span>
+          <div class="flex items-center gap-2">
+            <span class="timer-status-badge text-xs font-medium text-slate-500">Zatrzymany</span>
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator"></div>
+          </div>
         </div>
-        <input
-          type="text"
-          class="timer-display w-24 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors flex-shrink-0"
-          value="00:00"
-          maxlength="5"
-          aria-label="Czas: Coaching"
-        />
-        <button
-          class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0"
-        >
-          <svg
-            class="icon-play w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <svg
-            class="icon-pause w-4 h-4 hidden"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-          <span class="toggle-label">Start</span>
-        </button>
-        <button
-          class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
-          aria-label="Resetuj"
-          title="Resetuj timer"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
-            />
-          </svg>
-        </button>
+        <div class="flex items-center gap-3">
+          <input type="text"
+            class="timer-display flex-1 min-w-0 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors"
+            value="00:00" maxlength="5" aria-label="Czas: Coaching" />
+          <button class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
+            <svg class="icon-play w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="icon-pause w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <span class="toggle-label">Start</span>
+          </button>
+          <button class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0" aria-label="Resetuj" title="Resetuj timer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Timer: Tłumaczenie instrukcji -->
-      <div
-        class="timer-card flex-1 flex items-center gap-3 bg-slate-800 rounded-2xl px-4 border border-slate-700 transition-all duration-200"
-        data-timer-id="instructions"
-      >
-        <div
-          class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator flex-shrink-0"
-        ></div>
-        <div class="flex flex-col min-w-0 flex-1">
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-slate-400 truncate"
-            >Tłumaczenie instrukcji</span
-          >
-          <span
-            class="timer-status-badge text-xs font-medium text-slate-500 leading-tight"
-            >Zatrzymany</span
-          >
+      <div class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200" data-timer-id="instructions">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tłumaczenie instrukcji</span>
+          <div class="flex items-center gap-2">
+            <span class="timer-status-badge text-xs font-medium text-slate-500">Zatrzymany</span>
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator"></div>
+          </div>
         </div>
-        <input
-          type="text"
-          class="timer-display w-24 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors flex-shrink-0"
-          value="00:00"
-          maxlength="5"
-          aria-label="Czas: Tłumaczenie instrukcji"
-        />
-        <button
-          class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0"
-        >
-          <svg
-            class="icon-play w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <svg
-            class="icon-pause w-4 h-4 hidden"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-          <span class="toggle-label">Start</span>
-        </button>
-        <button
-          class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
-          aria-label="Resetuj"
-          title="Resetuj timer"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
-            />
-          </svg>
-        </button>
+        <div class="flex items-center gap-3">
+          <input type="text"
+            class="timer-display flex-1 min-w-0 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors"
+            value="00:00" maxlength="5" aria-label="Czas: Tłumaczenie instrukcji" />
+          <button class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
+            <svg class="icon-play w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="icon-pause w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <span class="toggle-label">Start</span>
+          </button>
+          <button class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0" aria-label="Resetuj" title="Resetuj timer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+          </button>
+        </div>
       </div>
+
     </main>
 
     <!-- Confirm Reset Modal -->
