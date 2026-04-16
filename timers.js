@@ -56,6 +56,7 @@ export function pauseTimer(id) {
   clearInterval(state[id].intervalId);
   state[id].intervalId = null;
   state[id].running = false;
+  onTick?.(id, state[id].seconds);
 }
 
 /** Toggles start/pause for the given timer. */
