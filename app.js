@@ -2,6 +2,40 @@
  * app.js — Entry point. Wires timers.js + ui.js to the DOM.
  */
 
+// ── PWA service worker ────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    // Show update banner if a new SW is already waiting
+    if (reg.waiting) showUpdateBanner(reg.waiting);
+
+    // SW found update during this session
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner(newSW);
+        }
+      });
+    });
+  }).catch(() => {});
+}
+
+function showUpdateBanner(sw) {
+  const banner = document.getElementById('update-banner');
+  if (!banner) return;
+  banner.classList.remove('translate-y-full', 'opacity-0');
+  banner.classList.add('translate-y-0', 'opacity-100');
+
+  document.getElementById('update-reload').addEventListener('click', () => {
+    sw.postMessage('SKIP_WAITING');
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+  });
+
+  document.getElementById('update-dismiss').addEventListener('click', () => {
+    banner.classList.add('translate-y-full', 'opacity-0');
+  });
+}
+
 import {
   TIMER_IDS,
   setOnTick,
