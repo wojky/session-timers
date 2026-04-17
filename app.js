@@ -39,6 +39,7 @@ function showUpdateBanner(sw) {
 import {
   TIMER_IDS,
   setOnTick,
+  setOnStateChange,
   toggleTimer,
   resetTimer,
   setTimerSeconds,
@@ -52,9 +53,25 @@ import {
   secondsToDisplay,
 } from './ui.js';
 
-// ── Initialise cards ──────────────────────────────────────────────────────────
+import { recordStart, recordPause, clearTimerHistory, clearAllHistory } from './history.js';
+import { renderStats } from './stats.js';
+
+// ── State change → history ─────────────────────────────────────────────────────
+setOnStateChange((id, event, seconds) => {
+  if (event === 'start') recordStart(id);
+  if (event === 'pause') recordPause(id, seconds);
+});
+
+// ── Initialise cards (restore from localStorage) ──────────────────────────────
+
+const _lsSeconds = (() => {
+  try { return JSON.parse(localStorage.getItem('session-timer-seconds') ?? 'null') ?? {}; }
+  catch (_) { return {}; }
+})();
 
 TIMER_IDS.forEach((id) => {
+  const saved = _lsSeconds[id];
+  if (saved > 0) setTimerSeconds(id, saved);
   const { seconds, running } = getTimerState(id);
   updateCard(id, seconds, running);
 });
@@ -84,6 +101,7 @@ document.getElementById('timers-container').addEventListener('click', async (e) 
     const confirmed = await confirmReset();
     if (confirmed) {
       resetTimer(id);
+      clearTimerHistory(id);
       updateCard(id, 0, false);
     }
   }
@@ -128,7 +146,65 @@ document.getElementById('timers-container').addEventListener('keydown', (e) => {
     display.blur();
   }
 });
+// ── View toggle (timers ↔ stats) ───────────────────────────────────────────
 
+const _timersPanel = document.getElementById('timers-container');
+const _statsPanel  = document.getElementById('stats-panel');
+const _btnTimers   = document.getElementById('view-btn-timers');
+const _btnStats    = document.getElementById('view-btn-stats');
+
+const ACTIVE_BTN   = ['text-indigo-400', 'bg-slate-700'];
+const INACTIVE_BTN = ['text-slate-500', 'hover:text-slate-300'];
+
+function setView(view) {
+  const goStats = view === 'stats';
+  _timersPanel.classList.toggle('hidden', goStats);
+  _statsPanel.classList.toggle('hidden', !goStats);
+
+  // Hide session info section when on stats view
+  const sessionSection = document.getElementById('session-toggle')?.closest('section');
+  sessionSection?.classList.toggle('hidden', goStats);
+
+  // Toggle button styles
+  _btnTimers.classList.toggle('text-indigo-400', !goStats);
+  _btnTimers.classList.toggle('bg-slate-700',    !goStats);
+  _btnTimers.classList.toggle('text-slate-500',   goStats);
+  _btnStats.classList.toggle('text-indigo-400',   goStats);
+  _btnStats.classList.toggle('bg-slate-700',      goStats);
+  _btnStats.classList.toggle('text-slate-500',   !goStats);
+
+  if (goStats) renderStats();
+}
+
+document.querySelectorAll('[data-set-view]').forEach((btn) => {
+  btn.addEventListener('click', () => setView(btn.dataset.setView));
+});
+
+// ── New session ───────────────────────────────────────────────────────────────
+
+document.getElementById('btn-new-session').addEventListener('click', async () => {
+  const confirmed = await confirmReset({
+    title:        'Nowa sesja?',
+    body:         'Wszystkie timery zostaną wyzerowane i historia wyczyszczona. Czy na pewno chcesz kontynuować?',
+    confirmLabel: 'Zacznij nową',
+  });
+  if (!confirmed) return;
+
+  TIMER_IDS.forEach((id) => {
+    resetTimer(id);
+    updateCard(id, 0, false);
+  });
+  clearAllHistory();
+
+  const dateEl = document.getElementById('session-date');
+  const timeEl = document.getElementById('session-time');
+  if (dateEl) dateEl.value = '';
+  if (timeEl) timeEl.value = '';
+  sessionStorage.removeItem('session-date');
+  sessionStorage.removeItem('session-time');
+
+  setView('timers');
+});
 // ── Session panel toggle ──────────────────────────────────────────────────────
 
 const sessionToggle = document.getElementById('session-toggle');

@@ -16,8 +16,27 @@ export const TIMER_IDS = ['dead', 'active', 'coaching', 'instructions'];
 /** @type {Record<string, TimerState>} */
 const state = {};
 
+const _LS_SECONDS_KEY = 'session-timer-seconds';
+
+function _loadSeconds() {
+  try {
+    const stored = localStorage.getItem(_LS_SECONDS_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch (_) {}
+  return {};
+}
+
+function _saveSeconds() {
+  try {
+    const data = {};
+    TIMER_IDS.forEach((id) => { data[id] = state[id].seconds; });
+    localStorage.setItem(_LS_SECONDS_KEY, JSON.stringify(data));
+  } catch (_) {}
+}
+
+const _saved = _loadSeconds();
 TIMER_IDS.forEach((id) => {
-  state[id] = { seconds: 0, running: false, intervalId: null };
+  state[id] = { seconds: _saved[id] ?? 0, running: false, intervalId: null };
 });
 
 /**
@@ -26,8 +45,18 @@ TIMER_IDS.forEach((id) => {
  */
 let onTick = null;
 
+/**
+ * Callback invoked on start/pause events with (timerId, event: 'start'|'pause', seconds).
+ * @type {((id: string, event: 'start'|'pause', seconds: number) => void) | null}
+ */
+let onStateChange = null;
+
 export function setOnTick(cb) {
   onTick = cb;
+}
+
+export function setOnStateChange(cb) {
+  onStateChange = cb;
 }
 
 /** Returns the currently running timer id, or null. */
@@ -44,8 +73,10 @@ export function startTimer(id) {
   if (state[id].running) return;
 
   state[id].running = true;
+  onStateChange?.(id, 'start', state[id].seconds);
   state[id].intervalId = setInterval(() => {
     state[id].seconds += 1;
+    _saveSeconds();
     onTick?.(id, state[id].seconds);
   }, 1000);
 }
@@ -56,6 +87,8 @@ export function pauseTimer(id) {
   clearInterval(state[id].intervalId);
   state[id].intervalId = null;
   state[id].running = false;
+  _saveSeconds();
+  onStateChange?.(id, 'pause', state[id].seconds);
   onTick?.(id, state[id].seconds);
 }
 
@@ -72,6 +105,7 @@ export function toggleTimer(id) {
 export function resetTimer(id) {
   pauseTimer(id);
   state[id].seconds = 0;
+  _saveSeconds();
   onTick?.(id, 0);
 }
 
@@ -81,6 +115,7 @@ export function resetTimer(id) {
  */
 export function setTimerSeconds(id, seconds) {
   state[id].seconds = Math.max(0, seconds);
+  _saveSeconds();
 }
 
 export function getTimerState(id) {

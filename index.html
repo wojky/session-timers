@@ -24,6 +24,7 @@
     />
     <meta name="apple-mobile-web-app-title" content="Session Timer" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -70,12 +71,80 @@
     class="h-dvh overflow-hidden flex flex-col bg-slate-900 text-slate-100 font-sans p-3 gap-3"
   >
     <!-- Header -->
-    <header class="flex-shrink-0 flex items-center">
+    <header class="flex-shrink-0 flex items-center justify-between">
       <div>
         <h1 class="text-lg font-bold text-slate-100 leading-tight">
           Session Timer
         </h1>
         <p class="text-slate-400 text-xs">Koordynator · Wizytacja treningu</p>
+      </div>
+      <!-- Right: new session + view toggle -->
+      <div class="flex items-center gap-2">
+        <button
+          id="btn-new-session"
+          class="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-500 hover:text-rose-400 hover:border-rose-500/40 transition-colors"
+          aria-label="Nowa sesja"
+          title="Nowa sesja"
+        >
+          <svg
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+        </button>
+        <!-- View toggle -->
+        <div
+          class="flex items-center gap-1 bg-slate-800 rounded-xl p-1 border border-slate-700"
+        >
+          <button
+            id="view-btn-timers"
+            data-set-view="timers"
+            class="p-2 rounded-lg text-indigo-400 bg-slate-700 transition-colors"
+            aria-label="Timery"
+            title="Timery"
+          >
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
+          <button
+            id="view-btn-stats"
+            data-set-view="stats"
+            class="p-2 rounded-lg text-slate-500 hover:text-slate-300 transition-colors"
+            aria-label="Statystyki"
+            title="Statystyki"
+          >
+            <svg
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -384,6 +453,138 @@
       </div>
     </main>
 
+    <!-- Stats panel -->
+    <div
+      id="stats-panel"
+      class="hidden flex-1 min-h-0 flex flex-col gap-3 max-w-[720px] w-full mx-auto overflow-y-auto"
+    >
+      <!-- Empty state -->
+      <div
+        id="stats-empty"
+        class="flex-1 flex flex-col items-center justify-center text-center gap-3"
+      >
+        <svg
+          class="w-10 h-10 text-slate-700"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        <p class="text-slate-500 text-sm">Brak danych</p>
+        <p class="text-slate-600 text-xs">
+          Uruchom timery, aby zobaczyć statystyki
+        </p>
+      </div>
+
+      <!-- Sticky legend (always visible while scrolling) -->
+      <div
+        id="stats-legend"
+        class="hidden sticky top-0 z-10 flex flex-wrap gap-x-4 gap-y-1.5 px-2 py-2 bg-slate-900/95 backdrop-blur-sm"
+      ></div>
+
+      <!-- Content (hidden until there is data) -->
+      <div id="stats-content" class="hidden flex flex-col gap-3 pb-1">
+        <!-- Summary table -->
+        <div
+          class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700"
+        >
+          <div class="flex items-baseline justify-between mb-3">
+            <h3
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              Podsumowanie
+            </h3>
+            <span class="text-xs text-slate-500"
+              >Trening:
+              <span
+                id="stats-total-time"
+                class="font-mono font-semibold text-slate-300"
+                >00:00</span
+              ></span
+            >
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[400px]">
+              <thead>
+                <tr>
+                  <th
+                    class="text-left text-xs text-slate-500 font-medium pb-3 pr-2"
+                  >
+                    Kat.
+                  </th>
+                  <th
+                    class="text-center text-xs text-slate-500 font-medium pb-3"
+                  >
+                    Łącznie
+                  </th>
+                  <th
+                    class="text-center text-xs text-slate-500 font-medium pb-3"
+                  >
+                    Udział
+                  </th>
+                  <th
+                    class="text-center text-xs text-slate-500 font-medium pb-3"
+                  >
+                    Odcinki
+                  </th>
+                  <th
+                    class="text-center text-xs text-slate-500 font-medium pb-3"
+                  >
+                    Min
+                  </th>
+                  <th
+                    class="text-center text-xs text-slate-500 font-medium pb-3"
+                  >
+                    Max
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="stats-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Timeline / accumulation chart -->
+        <div
+          class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700"
+        >
+          <h3
+            class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4"
+          >
+            Przebieg treningu
+          </h3>
+          <div class="overflow-x-auto -mx-1 px-1">
+            <div
+              id="timeline-wrapper"
+              style="min-width: 520px; height: 200px; position: relative"
+            >
+              <canvas id="timeline-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Radar chart -->
+        <div
+          class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700"
+        >
+          <h3
+            class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4"
+          >
+            Rozkład czasu
+          </h3>
+          <div class="max-w-xs mx-auto">
+            <canvas id="radar-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Confirm Reset Modal -->
     <div
       id="reset-modal"
@@ -398,7 +599,7 @@
         <h3 id="modal-title" class="text-lg font-semibold text-slate-100 mb-2">
           Resetować timer?
         </h3>
-        <p class="text-slate-400 text-sm mb-6">
+        <p id="modal-body" class="text-slate-400 text-sm mb-6">
           Ta operacja wyzeruje czas. Czy na pewno chcesz kontynuować?
         </p>
         <div class="flex gap-3 justify-end">

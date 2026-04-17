@@ -98,8 +98,14 @@ const modalCancel = document.getElementById('modal-cancel');
 
 let _resolveFn = null;
 
-/** Shows the reset confirmation modal. Returns a promise that resolves to true/false. */
-export function confirmReset() {
+/**
+ * Shows a confirmation modal. Returns a promise that resolves to true/false.
+ * @param {{ title?: string, body?: string, confirmLabel?: string }} [opts]
+ */
+export function confirmReset({ title, body, confirmLabel } = {}) {
+  if (title)        document.getElementById('modal-title').textContent   = title;
+  if (body)         document.getElementById('modal-body').textContent    = body;
+  if (confirmLabel) document.getElementById('modal-confirm').textContent = confirmLabel;
   return new Promise((resolve) => {
     _resolveFn = resolve;
     modal.classList.remove('hidden');
