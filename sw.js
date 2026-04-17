@@ -1,4 +1,4 @@
-const CACHE = 'session-timer-v9';
+const CACHE = 'session-timer-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,9 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
   );
-  // Do NOT skipWaiting automatically — wait for user confirmation via banner
+  // Take control immediately — no manual confirmation needed.
+  // State is preserved in localStorage so a silent reload is harmless.
+  self.skipWaiting();
 });
 
 self.addEventListener('message', (e) => {

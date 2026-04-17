@@ -4,36 +4,29 @@
 
 // ── PWA service worker ────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then((reg) => {
-    // Show update banner if a new SW is already waiting
-    if (reg.waiting) showUpdateBanner(reg.waiting);
+  // Auto-reload when a new SW takes control (after skipWaiting + clients.claim).
+  // Guard prevents reload loops.
+  let _swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swRefreshing) return;
+    _swRefreshing = true;
+    window.location.reload();
+  });
 
-    // SW found update during this session
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    // If a new SW is already waiting (rare edge case), activate it now.
+    if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+
     reg.addEventListener('updatefound', () => {
       const newSW = reg.installing;
       newSW.addEventListener('statechange', () => {
         if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-          showUpdateBanner(newSW);
+          // skipWaiting is called automatically by the SW, so nothing to do here.
+          // The controllerchange listener above will handle the reload.
         }
       });
     });
   }).catch(() => {});
-}
-
-function showUpdateBanner(sw) {
-  const banner = document.getElementById('update-banner');
-  if (!banner) return;
-  banner.classList.remove('translate-y-full', 'opacity-0');
-  banner.classList.add('translate-y-0', 'opacity-100');
-
-  document.getElementById('update-reload').addEventListener('click', () => {
-    sw.postMessage('SKIP_WAITING');
-    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
-  });
-
-  document.getElementById('update-dismiss').addEventListener('click', () => {
-    banner.classList.add('translate-y-full', 'opacity-0');
-  });
 }
 
 import {
