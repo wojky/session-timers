@@ -46,7 +46,7 @@ import {
   secondsToDisplay,
 } from './ui.js';
 
-import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history } from './history.js';
+import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS } from './history.js';
 import { renderStats } from './stats.js';
 
 // ── State change → history ─────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ document.getElementById('btn-export-csv')?.addEventListener('click', () => {
   const date = dateInput?.value || '';
   const time = timeInput?.value || '';
 
-  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)']];
+  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz']];
   history.forEach((entry, i) => {
     const startLocal = new Date(entry.startedAt).toLocaleString('pl-PL');
     rows.push([
@@ -230,6 +230,9 @@ document.getElementById('btn-export-csv')?.addEventListener('click', () => {
       entry.label,
       startLocal,
       String(entry.duration),
+      entry.text != null
+        ? `${{ like: '1', dislike: '-1' }[entry.rating] ?? '0'}*${entry.text}`
+        : '',
     ]);
   });
 
@@ -248,7 +251,318 @@ document.getElementById('btn-export-csv')?.addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
-// ── Timer visibility toggles ──────────────────────────────────────────────────
+// ── CSV import ────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const text = (ev.target.result ?? '').replace(/^\uFEFF/, ''); // strip BOM
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return;
+
+    // Parse CSV rows (handles quoted fields with escaped quotes)
+    function parseRow(line) {
+      const cells = [];
+      let cur = '';
+      let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQ) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (ch === '"') inQ = false;
+          else cur += ch;
+        } else {
+          if (ch === '"') inQ = true;
+          else if (ch === ',') { cells.push(cur); cur = ''; }
+          else cur += ch;
+        }
+      }
+      cells.push(cur);
+      return cells;
+    }
+
+    // Build label→id map from TIMER_LABELS
+    const labelToId = Object.fromEntries(
+      Object.entries(TIMER_LABELS).map(([id, label]) => [label, id])
+    );
+
+    let imported = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseRow(lines[i]);
+      // columns: Lp., Licznik, Start (czas lokalny), Czas trwania (ms), Komentarz
+      const label    = cols[1]?.trim() ?? '';
+      const duration = parseInt(cols[3] ?? '0', 10);
+      const comment  = cols[4]?.trim() ?? '';
+
+      // Reconstruct startedAt: derive from cumulativeTotal when available, else estimate
+      // We use index as fallback offset since we can't reliably parse locale-formatted dates
+      const startedAt = Date.now() - (lines.length - i) * 1000;
+
+      const id = labelToId[label];
+      if (!id && label !== 'Notatka') continue; // skip unknown rows
+
+      if (label === 'Notatka' && comment) {
+        // Parse rating prefix: "1*", "-1*", "0*"
+        let rating = null;
+        let text = comment;
+        const prefixMatch = comment.match(/^(-?[01])\*(.*)$/s);
+        if (prefixMatch) {
+          rating = prefixMatch[1] === '1' ? 'like' : prefixMatch[1] === '-1' ? 'dislike' : null;
+          text = prefixMatch[2];
+        }
+        history.push({ id: 'note', label: 'Notatka', startedAt, duration: 0, cumulativeTotal: 0, text, rating });
+      } else if (id) {
+        const cumulativeTotal = history.reduce((s, x) => s + x.duration, 0) + duration;
+        history.push({ id, label, startedAt, duration, cumulativeTotal });
+      }
+      imported++;
+    }
+
+    if (imported > 0) {
+      try { localStorage.setItem('session-timer-history', JSON.stringify(history)); } catch (_) {}
+      setView('stats');
+    }
+
+    // Reset input so same file can be re-imported if needed
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+});
+
+// ── Speech-to-text (record modal) ─────────────────────────────────────────────
+
+const _recordDialog      = document.getElementById('record-dialog');
+const _recordDialogClose = document.getElementById('record-dialog-close');
+const _recordBtnMic      = document.getElementById('record-btn-mic');
+const _recordBtnSave     = document.getElementById('record-btn-save');
+const _recordBtnClear    = document.getElementById('record-btn-clear');
+const _recordTranscript  = document.getElementById('record-transcript');
+const _recordStatusDot   = document.getElementById('record-status-dot');
+const _recordStatusLabel = document.getElementById('record-status-label');
+
+document.getElementById('btn-record').addEventListener('click', () => {
+  _recordDialog.showModal();
+});
+_recordDialogClose.addEventListener('click', () => {
+  _stopRecognition();
+  _recordDialog.close();
+});
+_recordDialog.addEventListener('click', (e) => {
+  if (e.target === _recordDialog) { _stopRecognition(); _recordDialog.close(); }
+});
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let _recognition = null;
+let _isRecording = false;
+let _finalTranscript = '';
+let _recordingStartedAt = null;
+let _recordingTrainingSeconds = 0;
+
+function _setRecordingState(active) {
+  _isRecording = active;
+  _recordBtnMic.classList.toggle('recording', active);
+  _recordStatusDot.style.backgroundColor = active ? '#ef4444' : '#475569';
+  _recordStatusLabel.textContent = active ? 'Słucham…' : 'Gotowy';
+}
+
+function _renderTranscript(interim = '') {
+  if (!_finalTranscript && !interim) {
+    _recordTranscript.innerHTML = '<span class="text-slate-600 italic">Naciśnij mikrofon, aby rozpocząć...</span>';
+    return;
+  }
+  _recordTranscript.textContent = _finalTranscript + (interim ? interim : '');
+}
+
+function _stopRecognition() {
+  if (_recognition) { _recognition.stop(); }
+  _setRecordingState(false);
+}
+
+_recordBtnMic.addEventListener('click', () => {
+  if (!SpeechRecognition) {
+    _recordStatusLabel.textContent = 'Przeglądarka nie wspiera tej funkcji';
+    _recordStatusDot.style.backgroundColor = '#f59e0b';
+    return;
+  }
+
+  if (_isRecording) {
+    _stopRecognition();
+    return;
+  }
+
+  _recordingStartedAt = Date.now();
+  _recordingTrainingSeconds = TIMER_IDS.reduce((sum, id) => sum + getTimerState(id).seconds, 0);
+  _recognition = new SpeechRecognition();
+  _recognition.lang = 'pl-PL';
+  _recognition.continuous = true;
+  _recognition.interimResults = true;
+
+  _recognition.onstart = () => _setRecordingState(true);
+  _recognition.onend   = () => _setRecordingState(false);
+  _recognition.onerror = (e) => {
+    _setRecordingState(false);
+    if (e.error === 'not-allowed') {
+      _recordStatusLabel.textContent = 'Brak dostępu do mikrofonu';
+      _recordStatusDot.style.backgroundColor = '#f59e0b';
+    }
+  };
+  _recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) _finalTranscript += t;
+      else interim += t;
+    }
+    _renderTranscript(interim);
+  };
+
+  _recognition.start();
+});
+
+_recordBtnSave.addEventListener('click', () => {
+  const text = _finalTranscript.trim();
+  if (!text) return;
+  _stopRecognition();
+  recordNote(text, _recordingStartedAt ?? Date.now(), _recordingTrainingSeconds);
+  _finalTranscript = '';
+  _recordingStartedAt = null;
+  _recordingTrainingSeconds = 0;
+  _renderTranscript();
+  _recordStatusLabel.textContent = 'Gotowy';
+  _recordStatusDot.style.backgroundColor = '#475569';
+  _updateNotesBadge();
+  _recordDialog.close();
+});
+
+_recordBtnClear.addEventListener('click', () => {
+  _stopRecognition();
+  _finalTranscript = '';
+  _recordingStartedAt = null;
+  _recordingTrainingSeconds = 0;
+  _renderTranscript();
+});
+
+// ── Notes modal ───────────────────────────────────────────────────────────────
+
+const _notesDialog      = document.getElementById('notes-dialog');
+const _notesDialogClose = document.getElementById('notes-dialog-close');
+const _notesList        = document.getElementById('notes-list');
+const _notesCountBadge  = document.getElementById('notes-count-badge');
+
+let _notesFilter = ''; // '' = all, 'like', 'dislike'
+
+const _RATING_SVG = {
+  like: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`,
+  dislike: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`,
+};
+
+const _RATING_CFG = {
+  like:    { activeBg: 'bg-green-800',  activeBorder: 'border-green-600',  activeText: 'text-green-400' },
+  dislike: { activeBg: 'bg-red-900',    activeBorder: 'border-red-700',    activeText: 'text-red-400'  },
+};
+
+function _updateNotesBadge() {
+  const count = history.filter((e) => e.id === 'note').length;
+  if (_notesCountBadge) {
+    _notesCountBadge.textContent = String(count);
+    _notesCountBadge.classList.toggle('hidden', count === 0);
+  }
+}
+
+function _renderNotesList() {
+  const allNotes = history.filter((e) => e.id === 'note');
+  const notes = _notesFilter
+    ? allNotes.filter((n) => n.rating === _notesFilter)
+    : allNotes;
+
+  _notesList.innerHTML = '';
+
+  if (notes.length === 0) {
+    _notesList.innerHTML = '<p class="text-sm text-slate-500 italic text-center py-4">Brak notatek</p>';
+    return;
+  }
+
+  notes.forEach((n) => {
+    const ts = n.trainingSeconds ?? 0;
+    const m = Math.floor(ts / 60);
+    const s = ts % 60;
+    const trainingTime = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+    const el = document.createElement('div');
+    el.className = 'flex items-start gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5';
+
+    // Rating buttons column
+    const ratingDiv = document.createElement('div');
+    ratingDiv.className = 'flex flex-col gap-1 flex-shrink-0 pt-0.5';
+
+    (['like', 'dislike']).forEach((r) => {
+      const cfg = _RATING_CFG[r];
+      const btn = document.createElement('button');
+      const isActive = n.rating === r;
+      btn.className = `w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${
+        isActive
+          ? `${cfg.activeBg} ${cfg.activeBorder} ${cfg.activeText}`
+          : 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
+      }`;
+      btn.innerHTML = _RATING_SVG[r];
+      btn.title = r;
+      btn.addEventListener('click', () => {
+        setNoteRating(n, n.rating === r ? null : r);
+        _renderNotesList();
+      });
+      ratingDiv.appendChild(btn);
+    });
+
+    // Text column
+    const textDiv = document.createElement('div');
+    textDiv.className = 'flex flex-col gap-0.5 flex-1 min-w-0';
+    textDiv.innerHTML = `<span class="text-[10px] text-slate-500 font-mono">@ ${trainingTime} treningu</span><p class="text-sm text-slate-200 whitespace-pre-wrap break-words">${n.text.replace(/</g, '&lt;')}</p>`;
+
+    el.appendChild(textDiv);
+    el.appendChild(ratingDiv);
+    _notesList.appendChild(el);
+  });
+}
+
+function _openNotesModal() {
+  _notesFilter = '';
+  // Reset filter button styles
+  document.querySelectorAll('.notes-filter-btn').forEach((btn) => {
+    const active = btn.dataset.notesFilter === '';
+    btn.classList.toggle('bg-slate-700', active);
+    btn.classList.toggle('text-slate-200', active);
+    btn.classList.toggle('border-slate-600', active);
+    btn.classList.toggle('text-slate-400', !active);
+    btn.classList.toggle('border-slate-700', !active);
+  });
+  _renderNotesList();
+  _notesDialog.showModal();
+}
+
+document.getElementById('btn-notes')?.addEventListener('click', _openNotesModal);
+_notesDialogClose.addEventListener('click', () => _notesDialog.close());
+_notesDialog.addEventListener('click', (e) => { if (e.target === _notesDialog) _notesDialog.close(); });
+
+document.querySelectorAll('.notes-filter-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    _notesFilter = btn.dataset.notesFilter;
+    document.querySelectorAll('.notes-filter-btn').forEach((b) => {
+      const active = b.dataset.notesFilter === _notesFilter;
+      b.classList.toggle('bg-slate-700', active);
+      b.classList.toggle('text-slate-200', active);
+      b.classList.toggle('border-slate-600', active);
+      b.classList.toggle('text-slate-400', !active);
+      b.classList.toggle('border-slate-700', !active);
+    });
+    _renderNotesList();
+  });
+});
+
+// Init badge on load
+_updateNotesBadge();
 
 const _LS_VISIBILITY_KEY = 'session-timer-visibility';
 

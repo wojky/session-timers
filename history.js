@@ -80,6 +80,16 @@ export function clearTimerHistory(id) {
   _saveHistory();
 }
 
+/**
+ * Sets the rating of a note entry and persists history.
+ * @param {object} entry — reference to the note entry in history array
+ * @param {'like'|'dislike'|'neutral'|null} rating
+ */
+export function setNoteRating(entry, rating) {
+  entry.rating = rating;
+  _saveHistory();
+}
+
 /** Clears the entire history and removes it from localStorage. */
 export function clearAllHistory() {
   history.splice(0);
@@ -87,6 +97,26 @@ export function clearAllHistory() {
     localStorage.removeItem(_LS_KEY);
     localStorage.removeItem('session-timer-seconds');
   } catch (_) {}
+}
+
+/**
+ * Saves a voice note to history.
+ * @param {string} text — transcribed text
+ * @param {number} startedAt — Date.now() when recording started
+ * @param {number} trainingSeconds — total timer seconds at moment of recording start
+ */
+export function recordNote(text, startedAt, trainingSeconds = 0) {
+  const entry = {
+    id: 'note',
+    label: 'Notatka',
+    startedAt,
+    duration: 0,
+    cumulativeTotal: 0,
+    text,
+    trainingSeconds,
+  };
+  history.push(entry);
+  _saveHistory();
 }
 
 function _saveHistory() {
