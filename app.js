@@ -46,7 +46,7 @@ import {
   secondsToDisplay,
 } from './ui.js';
 
-import { recordStart, recordPause, clearTimerHistory, clearAllHistory } from './history.js';
+import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history } from './history.js';
 import { renderStats } from './stats.js';
 
 // ── State change → history ─────────────────────────────────────────────────────
@@ -154,10 +154,6 @@ function setView(view) {
   _timersPanel.classList.toggle('hidden', goStats);
   _statsPanel.classList.toggle('hidden', !goStats);
 
-  // Hide session info section when on stats view
-  const sessionSection = document.getElementById('session-toggle')?.closest('section');
-  sessionSection?.classList.toggle('hidden', goStats);
-
   // Toggle button styles
   _btnTimers.classList.toggle('text-indigo-400', !goStats);
   _btnTimers.classList.toggle('bg-slate-700',    !goStats);
@@ -198,18 +194,6 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
 
   setView('timers');
 });
-// ── Session panel toggle ──────────────────────────────────────────────────────
-
-const sessionToggle = document.getElementById('session-toggle');
-const sessionPanel = document.getElementById('session-panel');
-const sessionChevron = document.getElementById('session-chevron');
-
-sessionToggle.addEventListener('click', () => {
-  const isCollapsed = sessionPanel.classList.toggle('collapsed');
-  sessionChevron.classList.toggle('rotate', isCollapsed);
-  sessionToggle.setAttribute('aria-expanded', String(!isCollapsed));
-});
-
 // ── Session date/time — persist to sessionStorage ─────────────────────────────
 
 const dateInput = document.getElementById('session-date');
@@ -218,12 +202,81 @@ const timeInput = document.getElementById('session-time');
 // Restore from sessionStorage
 const savedDate = sessionStorage.getItem('session-date');
 const savedTime = sessionStorage.getItem('session-time');
-if (savedDate) dateInput.value = savedDate;
-if (savedTime) timeInput.value = savedTime;
+if (savedDate && dateInput) dateInput.value = savedDate;
+if (savedTime && timeInput) timeInput.value = savedTime;
 
-dateInput.addEventListener('change', () => {
-  sessionStorage.setItem('session-date', dateInput.value);
+if (dateInput) {
+  dateInput.addEventListener('change', () => {
+    sessionStorage.setItem('session-date', dateInput.value);
+  });
+}
+if (timeInput) {
+  timeInput.addEventListener('change', () => {
+    sessionStorage.setItem('session-time', timeInput.value);
+  });
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-export-csv')?.addEventListener('click', () => {
+  const date = dateInput?.value || '';
+  const time = timeInput?.value || '';
+
+  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)']];
+  history.forEach((entry, i) => {
+    const startLocal = new Date(entry.startedAt).toLocaleString('pl-PL');
+    rows.push([
+      String(i + 1),
+      entry.label,
+      startLocal,
+      String(entry.duration),
+    ]);
+  });
+
+  const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const datePart = date || 'brak-daty';
+  const timePart = time ? time.replace(':', '-') : 'brak-godziny';
+  const filename = `${datePart}_${timePart}.csv`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 });
-timeInput.addEventListener('change', () => {
-  sessionStorage.setItem('session-time', timeInput.value);
+
+// ── Timer visibility toggles ──────────────────────────────────────────────────
+
+const _LS_VISIBILITY_KEY = 'session-timer-visibility';
+
+function _loadVisibility() {
+  try { return JSON.parse(localStorage.getItem(_LS_VISIBILITY_KEY) ?? 'null') ?? {}; }
+  catch (_) { return {}; }
+}
+
+function _applyVisibility(id, visible) {
+  const card = document.querySelector(`[data-timer-id="${id}"]`);
+  if (card) card.classList.toggle('hidden', !visible);
+}
+
+const _savedVisibility = _loadVisibility();
+
+document.querySelectorAll('.timer-visibility-toggle').forEach((checkbox) => {
+  const id = checkbox.dataset.targetTimer;
+
+  // Restore saved state
+  if (Object.prototype.hasOwnProperty.call(_savedVisibility, id)) {
+    checkbox.checked = _savedVisibility[id];
+    _applyVisibility(id, _savedVisibility[id]);
+  }
+
+  checkbox.addEventListener('change', () => {
+    _applyVisibility(id, checkbox.checked);
+    const vis = _loadVisibility();
+    vis[id] = checkbox.checked;
+    localStorage.setItem(_LS_VISIBILITY_KEY, JSON.stringify(vis));
+  });
 });

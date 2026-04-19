@@ -4,7 +4,7 @@
  * This module is stateful but framework-agnostic.
  */
 
-export const TIMER_IDS = ['dead', 'active', 'coaching', 'instructions'];
+export const TIMER_IDS = ['active', 'dead', 'coaching', 'instructions', 'motor'];
 
 /**
  * @typedef {Object} TimerState
@@ -15,6 +15,14 @@ export const TIMER_IDS = ['dead', 'active', 'coaching', 'instructions'];
 
 /** @type {Record<string, TimerState>} */
 const state = {};
+
+/**
+ * Wall-clock reference point per timer.
+ * _wallStart[id] = Date.now() value at which seconds would have been 0.
+ * Set on each startTimer call: Date.now() - state[id].seconds * 1000
+ * @type {Record<string, number>}
+ */
+const _wallStart = {};
 
 const _LS_SECONDS_KEY = 'session-timer-seconds';
 
@@ -74,8 +82,10 @@ export function startTimer(id) {
 
   state[id].running = true;
   onStateChange?.(id, 'start', state[id].seconds);
+  // Anchor wall-clock so computed seconds always match real elapsed time
+  _wallStart[id] = Date.now() - state[id].seconds * 1000;
   state[id].intervalId = setInterval(() => {
-    state[id].seconds += 1;
+    state[id].seconds = Math.floor((Date.now() - _wallStart[id]) / 1000);
     _saveSeconds();
     onTick?.(id, state[id].seconds);
   }, 1000);
@@ -105,6 +115,7 @@ export function toggleTimer(id) {
 export function resetTimer(id) {
   pauseTimer(id);
   state[id].seconds = 0;
+  delete _wallStart[id];
   _saveSeconds();
   onTick?.(id, 0);
 }
@@ -115,6 +126,10 @@ export function resetTimer(id) {
  */
 export function setTimerSeconds(id, seconds) {
   state[id].seconds = Math.max(0, seconds);
+  // Re-anchor wall-clock if timer is currently running
+  if (state[id].running) {
+    _wallStart[id] = Date.now() - state[id].seconds * 1000;
+  }
   _saveSeconds();
 }
 

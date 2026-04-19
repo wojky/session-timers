@@ -6,8 +6,8 @@
  *   id:               string,   // timer id
  *   label:            string,   // human-readable label
  *   startedAt:        number,   // Date.now() when segment started
- *   duration:         number,   // seconds this segment ran
- *   cumulativeTotal:  number,   // total seconds across ALL segments so far
+ *   duration:         number,   // milliseconds this segment ran
+ *   cumulativeTotal:  number,   // total milliseconds across ALL segments so far
  * }
  */
 
@@ -15,6 +15,7 @@ export const TIMER_LABELS = {
   dead:         'Martwy czas',
   active:       'Czas aktywny',
   coaching:     'Coaching',
+  motor:        'Motoryka',
   instructions: 'Tłumaczenie instrukcji',
 };
 
@@ -33,7 +34,7 @@ try {
 } catch (_) {}
 
 // Wall-clock timestamp when each timer last started (null = not running)
-const _segmentStart = { dead: null, active: null, coaching: null, instructions: null };
+const _segmentStart = { dead: null, active: null, coaching: null, motor: null, instructions: null };
 
 /** Call when a timer starts. Records the wall-clock start time. */
 export function recordStart(id) {
@@ -50,12 +51,12 @@ export function recordPause(id, currentSeconds) {
   const started = _segmentStart[id];
   if (started === null) return; // never recorded a start — skip
 
-  const wallDuration = Math.round((Date.now() - started) / 1000);
+  const wallDuration = Date.now() - started;
   _segmentStart[id] = null;
 
   // Use wall-clock duration; fall back to 0 if somehow negative
   const duration = Math.max(0, wallDuration);
-  if (duration === 0) return; // sub-second tap — not worth recording
+  if (duration < 100) return; // sub-100ms tap — not worth recording
 
   const cumulativeTotal = history.reduce((sum, e) => sum + e.duration, 0) + duration;
 
@@ -105,8 +106,9 @@ function _logHistory() {
   console.groupEnd();
 }
 
-function _fmt(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+function _fmt(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
