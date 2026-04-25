@@ -1,4 +1,4 @@
-const CACHE = 'session-timer-v25';
+const CACHE = 'session-timer-v38';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,8 @@ const ASSETS = [
   './ui.js',
   './history.js',
   './stats.js',
+  './settings.js',
+  './style.css',
   './manifest.json',
   './favicon.svg',
 ];

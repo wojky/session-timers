@@ -48,12 +48,22 @@ import {
 
 import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS } from './history.js';
 import { renderStats } from './stats.js';
+import { closeSettings } from './settings.js';
 
 // ── State change → history ─────────────────────────────────────────────────────
 setOnStateChange((id, event, seconds) => {
-  if (event === 'start') recordStart(id);
+  if (event === 'start') recordStart(id, seconds);
   if (event === 'pause') recordPause(id, seconds);
 });
+
+// ── Total time display ───────────────────────────────────────────────────────
+
+const _totalTimeDisplay = document.getElementById('total-time-display');
+
+function updateTotalTime() {
+  const totalSeconds = TIMER_IDS.reduce((sum, id) => sum + getTimerState(id).seconds, 0);
+  if (_totalTimeDisplay) _totalTimeDisplay.textContent = secondsToDisplay(totalSeconds);
+}
 
 // ── Initialise cards (restore from localStorage) ──────────────────────────────
 
@@ -68,12 +78,14 @@ TIMER_IDS.forEach((id) => {
   const { seconds, running } = getTimerState(id);
   updateCard(id, seconds, running);
 });
+updateTotalTime();
 
 // ── Tick callback ─────────────────────────────────────────────────────────────
 
 setOnTick((id, seconds) => {
   const { running } = getTimerState(id);
   updateCard(id, seconds, running);
+  updateTotalTime();
 });
 
 // ── Button event delegation ───────────────────────────────────────────────────
@@ -96,6 +108,7 @@ document.getElementById('timers-container').addEventListener('click', async (e) 
       resetTimer(id);
       clearTimerHistory(id);
       updateCard(id, 0, false);
+      updateTotalTime();
     }
   }
 });
@@ -115,6 +128,7 @@ document.getElementById('timers-container').addEventListener('change', (e) => {
     setTimerSeconds(id, parsed);
     const { running } = getTimerState(id);
     updateCard(id, parsed, running);
+    updateTotalTime();
   } else {
     // Revert to current value on invalid input
     const { seconds, running } = getTimerState(id);
@@ -187,10 +201,13 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
 
   const dateEl = document.getElementById('session-date');
   const timeEl = document.getElementById('session-time');
-  if (dateEl) dateEl.value = '';
-  if (timeEl) timeEl.value = '';
-  sessionStorage.removeItem('session-date');
-  sessionStorage.removeItem('session-time');
+  const now = new Date();
+  const newDate = now.toLocaleDateString('en-CA');
+  const newTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  if (dateEl) dateEl.value = newDate;
+  if (timeEl) timeEl.value = newTime;
+  sessionStorage.setItem('session-date', newDate);
+  sessionStorage.setItem('session-time', newTime);
 
   setView('timers');
 });
@@ -199,11 +216,28 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
 const dateInput = document.getElementById('session-date');
 const timeInput = document.getElementById('session-time');
 
-// Restore from sessionStorage
+// Restore from sessionStorage; if nothing saved, prefill with current date/time
 const savedDate = sessionStorage.getItem('session-date');
 const savedTime = sessionStorage.getItem('session-time');
-if (savedDate && dateInput) dateInput.value = savedDate;
-if (savedTime && timeInput) timeInput.value = savedTime;
+
+if (dateInput) {
+  if (savedDate) {
+    dateInput.value = savedDate;
+  } else {
+    const now = new Date();
+    dateInput.value = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    sessionStorage.setItem('session-date', dateInput.value);
+  }
+}
+if (timeInput) {
+  if (savedTime) {
+    timeInput.value = savedTime;
+  } else {
+    const now = new Date();
+    timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    sessionStorage.setItem('session-time', timeInput.value);
+  }
+}
 
 if (dateInput) {
   dateInput.addEventListener('change', () => {
@@ -218,10 +252,23 @@ if (timeInput) {
 
 // ── CSV export ────────────────────────────────────────────────────────────────
 
-document.getElementById('btn-export-csv')?.addEventListener('click', () => {
+const _exportDialog    = document.getElementById('export-dialog');
+const _exportInput     = document.getElementById('export-custom-name');
+const _exportPreview   = document.getElementById('export-filename-preview');
+const _exportConfirm   = document.getElementById('export-dialog-confirm');
+const _exportCancel    = document.getElementById('export-dialog-cancel');
+const _exportClose     = document.getElementById('export-dialog-close');
+
+function _buildExportFilename(custom) {
   const date = dateInput?.value || '';
   const time = timeInput?.value || '';
+  const datePart = date || 'brak-daty';
+  const timePart = time ? time.replace(':', '-') : 'brak-godziny';
+  const customPart = custom.trim().replace(/[^a-zA-Z0-9_\-ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return customPart ? `${datePart}_${timePart}_${customPart}.csv` : `${datePart}_${timePart}.csv`;
+}
 
+function _doExportCSV(filename) {
   const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz']];
   history.forEach((entry, i) => {
     const startLocal = new Date(entry.startedAt).toLocaleString('pl-PL');
@@ -235,20 +282,40 @@ document.getElementById('btn-export-csv')?.addEventListener('click', () => {
         : '',
     ]);
   });
-
   const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-
-  const datePart = date || 'brak-daty';
-  const timePart = time ? time.replace(':', '-') : 'brak-godziny';
-  const filename = `${datePart}_${timePart}.csv`;
-
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+document.getElementById('btn-export-csv')?.addEventListener('click', () => {
+  closeSettings();
+
+  _exportInput.value = '';
+  _exportPreview.textContent = _buildExportFilename('');
+  _exportDialog.showModal();
+});
+
+_exportInput?.addEventListener('input', () => {
+  _exportPreview.textContent = _buildExportFilename(_exportInput.value);
+});
+
+function _closeExportDialog() {
+  _exportDialog.close();
+}
+
+_exportClose?.addEventListener('click', _closeExportDialog);
+_exportCancel?.addEventListener('click', _closeExportDialog);
+_exportDialog?.addEventListener('click', (e) => { if (e.target === _exportDialog) _closeExportDialog(); });
+
+_exportConfirm?.addEventListener('click', () => {
+  const filename = _buildExportFilename(_exportInput.value);
+  _closeExportDialog();
+  _doExportCSV(filename);
 });
 
 // ── CSV import ────────────────────────────────────────────────────────────────

@@ -35,10 +35,17 @@ try {
 
 // Wall-clock timestamp when each timer last started (null = not running)
 const _segmentStart = { dead: null, active: null, coaching: null, motor: null, instructions: null };
+// Seconds value on the timer at the moment of last start (for precise duration calc)
+const _segmentStartSeconds = { dead: 0, active: 0, coaching: 0, motor: 0, instructions: 0 };
 
-/** Call when a timer starts. Records the wall-clock start time. */
-export function recordStart(id) {
+/**
+ * Call when a timer starts.
+ * @param {string} id
+ * @param {number} seconds – current elapsed seconds on the timer at start time
+ */
+export function recordStart(id, seconds) {
   _segmentStart[id] = Date.now();
+  _segmentStartSeconds[id] = seconds ?? 0;
 }
 
 /**
@@ -51,12 +58,13 @@ export function recordPause(id, currentSeconds) {
   const started = _segmentStart[id];
   if (started === null) return; // never recorded a start — skip
 
-  const wallDuration = Date.now() - started;
   _segmentStart[id] = null;
 
-  // Use wall-clock duration; fall back to 0 if somehow negative
-  const duration = Math.max(0, wallDuration);
-  if (duration < 100) return; // sub-100ms tap — not worth recording
+  // Use seconds-delta (same unit as timer display) to stay in sync with what the
+  // user sees. Wall-clock ms would accumulate fractional-second drift on each resume
+  // because _wallStart is anchored to floored integer seconds.
+  const duration = Math.max(0, (currentSeconds - _segmentStartSeconds[id]) * 1000);
+  if (duration === 0) return; // nothing elapsed — skip
 
   const cumulativeTotal = history.reduce((sum, e) => sum + e.duration, 0) + duration;
 
