@@ -311,6 +311,27 @@
       </div>
       <!-- Right: view toggle -->
       <div class="flex items-center gap-2">
+        <!-- Help button -->
+        <button
+          id="btn-help"
+          class="p-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-500 hover:text-indigo-400 hover:border-indigo-500 transition-colors"
+          aria-label="Pomoc"
+          title="Pomoc"
+        >
+          <svg
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <circle cx="12" cy="17" r=".5" fill="currentColor" />
+          </svg>
+        </button>
         <!-- Record button -->
         <div class="relative">
           <button
@@ -1155,6 +1176,253 @@
       </div>
     </dialog>
 
+    <!-- Help dialog -->
+    <dialog
+      id="help-dialog"
+      class="bg-slate-800 border border-slate-700 rounded-2xl p-0 shadow-2xl"
+    >
+      <!-- Header -->
+      <div
+        class="flex items-center justify-between px-5 py-4 border-b border-slate-700 flex-shrink-0"
+      >
+        <span class="text-sm font-semibold text-slate-100">Pomoc</span>
+        <button
+          id="help-dialog-close"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+          aria-label="Zamknij"
+        >
+          <svg
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <!-- Body: TOC + content -->
+      <div class="help-dialog-body flex flex-col flex-1 min-h-0">
+        <!-- Table of contents -->
+        <nav
+          id="help-toc"
+          class="flex-shrink-0 px-5 py-3 border-b border-slate-700 flex flex-wrap gap-2"
+        >
+          <a
+            href="#help-s1"
+            class="help-toc-link text-xs font-medium px-3 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >Przegląd</a
+          >
+          <a
+            href="#help-s2"
+            class="help-toc-link text-xs font-medium px-3 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >Liczniki</a
+          >
+          <a
+            href="#help-s3"
+            class="help-toc-link text-xs font-medium px-3 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >Obsługa</a
+          >
+          <a
+            href="#help-s4"
+            class="help-toc-link text-xs font-medium px-3 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >Sesja i eksport</a
+          >
+        </nav>
+        <!-- Scrollable content -->
+        <div
+          id="help-dialog-body"
+          class="flex-1 min-h-0 overflow-y-auto px-5 py-5 text-sm text-slate-300 leading-relaxed"
+        >
+          <!-- ── Section 1: Przegląd ── -->
+          <section id="help-s1" class="mb-8">
+            <h2
+              class="text-base font-bold text-slate-100 mb-3 pb-2 border-b border-slate-700"
+            >
+              Przegląd
+            </h2>
+            <p class="mb-3">
+              <strong class="text-slate-100">Session Timer</strong> to aplikacja
+              PWA przeznaczona dla koordynatorów i trenerów sportowych.
+              Umożliwia precyzyjny pomiar czasu w podziale na pięć kategorii
+              podczas trwania zajęć lub sesji treningowej.
+            </p>
+            <p class="mb-3">
+              Aplikacja działa offline – po pierwszym załadowaniu jest dostępna
+              bez połączenia z internetem. Można ją zainstalować na urządzeniu
+              mobilnym lub komputerze korzystając z opcji „Dodaj do ekranu
+              głównego" w przeglądarce.
+            </p>
+            <p>
+              Dane sesji (czasy liczników, historia segmentów) są przechowywane
+              lokalnie w przeglądarce. Zamknięcie karty nie powoduje utraty
+              postępu – po ponownym otwarciu aplikacji czasy są zachowane.
+            </p>
+          </section>
+
+          <!-- ── Section 2: Liczniki ── -->
+          <section id="help-s2" class="mb-8">
+            <h2
+              class="text-base font-bold text-slate-100 mb-3 pb-2 border-b border-slate-700"
+            >
+              Liczniki
+            </h2>
+            <p class="mb-4">
+              Aplikacja mierzy czas w pięciu kategoriach. Tylko jeden licznik
+              może być aktywny w danym momencie.
+            </p>
+            <ul class="space-y-4">
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 w-3 h-3 rounded-sm flex-shrink-0"
+                  style="background: #22d3ee"
+                ></span>
+                <div>
+                  <span class="font-semibold text-slate-100">Czas aktywny</span>
+                  <p class="mt-0.5 text-slate-400">
+                    Czas, w którym zawodnicy aktywnie wykonują ćwiczenia lub
+                    grają. Cel: maksymalizacja tego czasu.
+                  </p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 w-3 h-3 rounded-sm flex-shrink-0"
+                  style="background: #6366f1"
+                ></span>
+                <div>
+                  <span class="font-semibold text-slate-100">Martwy czas</span>
+                  <p class="mt-0.5 text-slate-400">
+                    Przerwy organizacyjne, przestoje, oczekiwanie na sprzęt,
+                    przejścia między ćwiczeniami.
+                  </p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 w-3 h-3 rounded-sm flex-shrink-0"
+                  style="background: #f59e0b"
+                ></span>
+                <div>
+                  <span class="font-semibold text-slate-100">Coaching</span>
+                  <p class="mt-0.5 text-slate-400">
+                    Instruktaż, demonstracje, omówienia taktyczne – trener mówi,
+                    zawodnicy słuchają.
+                  </p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 w-3 h-3 rounded-sm flex-shrink-0"
+                  style="background: #34d399"
+                ></span>
+                <div>
+                  <span class="font-semibold text-slate-100"
+                    >Tłumaczenie instrukcji</span
+                  >
+                  <p class="mt-0.5 text-slate-400">
+                    Czas, który trener wykorzystuje na tłumaczenie organizacji
+                    ćwiczenia, zasad i reguł gry oraz dobór zawodników do
+                    poszczególnych drużyn lub grup.
+                  </p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 w-3 h-3 rounded-sm flex-shrink-0"
+                  style="background: #e879f9"
+                ></span>
+                <div>
+                  <span class="font-semibold text-slate-100">Motoryka</span>
+                  <p class="mt-0.5 text-slate-400">
+                    Czas przeznaczony na ćwiczenia motoryczne, podczas których
+                    piłka nie jest używana wcale lub pojawia się jedynie w
+                    charakterze elementu dodatkowego.
+                  </p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- ── Section 3: Obsługa ── -->
+          <section id="help-s3" class="mb-8">
+            <h2
+              class="text-base font-bold text-slate-100 mb-3 pb-2 border-b border-slate-700"
+            >
+              Obsługa liczników
+            </h2>
+            <ul class="space-y-3 list-none">
+              <li>
+                <span class="text-indigo-400 font-semibold">Start / Pauza</span>
+                — przycisk przy każdym liczniku uruchamia lub zatrzymuje pomiar.
+                Uruchomienie jednego licznika automatycznie wstrzymuje
+                poprzednio aktywny.
+              </li>
+              <li>
+                <span class="text-indigo-400 font-semibold"
+                  >Reset licznika</span
+                >
+                — przycisk „↺" przy liczniku zeruje wybrany czas po
+                potwierdzeniu. Pozostałe liczniki nie są zmieniane.
+              </li>
+              <li>
+                <span class="text-indigo-400 font-semibold">Ręczna edycja</span>
+                — pole z czasem (format
+                <code class="text-slate-100 bg-slate-700 px-1 rounded"
+                  >MM:SS</code
+                >) można kliknąć i wpisać wartość bezpośrednio. Zatwierdź
+                klawiszem Enter lub klikając poza polem.
+              </li>
+              <li>
+                <span class="text-indigo-400 font-semibold">Łączny czas</span> —
+                na dole ekranu liczników wyświetlany jest zsumowany czas
+                wszystkich pięciu kategorii w czasie rzeczywistym.
+              </li>
+              <li>
+                <span class="text-indigo-400 font-semibold">Reset sesji</span> —
+                przycisk w nagłówku (ikona flagi) zeruje wszystkie liczniki i
+                historię bieżącej sesji.
+              </li>
+            </ul>
+          </section>
+
+          <!-- ── Section 4: Sesja i eksport ── -->
+          <section id="help-s4" class="mb-2">
+            <h2
+              class="text-base font-bold text-slate-100 mb-3 pb-2 border-b border-slate-700"
+            >
+              Sesja i eksport
+            </h2>
+            <p class="mb-3">
+              W panelu ustawień (ikona koła zębatego w lewym górnym rogu) możesz
+              wprowadzić datę i godzinę sesji. Są one uzupełniane automatycznie
+              przy pierwszym uruchomieniu i aktualizują się przy każdym resecie
+              sesji.
+            </p>
+            <p class="mb-3">
+              Przycisk
+              <span class="text-indigo-400 font-semibold">Zapisz</span> (ikona
+              dyskietki w nagłówku) otwiera okno eksportu. Możesz nadać plikowi
+              własną nazwę lub użyć wygenerowanej automatycznie.
+            </p>
+            <p class="mb-3">Plik CSV zawiera:</p>
+            <ul class="space-y-1 list-disc list-inside text-slate-400">
+              <li>Datę i godzinę sesji</li>
+              <li>Podsumowanie czasu każdej kategorii</li>
+              <li>
+                Szczegółową historię segmentów: kategoria, czas startu, czas
+                końca, czas trwania
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
     <!-- Export CSV dialog -->
     <dialog
       id="export-dialog"
@@ -1335,5 +1603,6 @@
 
     <script type="module" src="app.js"></script>
     <script type="module" src="settings.js"></script>
+    <script type="module" src="help.js"></script>
   </body>
 </html>
