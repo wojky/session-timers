@@ -28,6 +28,10 @@ const TIMER_COLORS = {
 let radarChart = null;
 /** @type {any|null} Chart.js timeline instance */
 let timelineChart = null;
+/** @type {any|null} Chart.js entries bar instance */
+let entriesChart = null;
+/** @type {any|null} Chart.js coaching scatter instance */
+let coachingScatterChart = null;
 
 function fmt(ms) {
   const totalSec = Math.floor(ms / 1000);
@@ -55,9 +59,13 @@ export function renderStats() {
   const grandTotal = stats.reduce((sum, s) => sum + s.total, 0);
   _renderEmptyState(stats);
   _renderLegend(stats);
+  _renderKPI(stats, grandTotal);
+  _render100Bar(stats, grandTotal);
   _renderTable(stats, grandTotal);
   _renderTimeline();
   _renderRadar(stats);
+  _renderEntriesChart(stats);
+  _renderCoachingScatter();
   _initDialog(stats, grandTotal);
 }
 
@@ -98,6 +106,7 @@ function _renderTable(stats, grandTotal) {
   tbody.innerHTML = stats
     .map((s) => {
       const pct = grandTotal > 0 ? Math.round((s.total / grandTotal) * 100) : 0;
+      const avg = s.count > 0 ? Math.round(s.total / s.count) : null;
       return `
     <tr class="border-t border-slate-700/60 cursor-pointer hover:bg-slate-700/30 transition-colors" data-detail-id="${s.id}">
       <td class="py-2.5 pr-2">
@@ -116,7 +125,8 @@ function _renderTable(stats, grandTotal) {
         </div>
       </td>
       <td class="py-2.5 text-sm text-slate-400 text-center">${s.count}</td>
-      <td class="py-2.5 text-sm font-mono text-slate-400 text-center tabular-nums">${s.min !== null ? fmt(s.min) : '—'}</td>
+      <td class="py-2.5 text-sm font-mono text-slate-400 text-center tabular-nums">${avg !== null ? fmt(avg) : '\u2014'}</td>
+      <td class="py-2.5 text-sm font-mono text-slate-400 text-center tabular-nums">${s.min !== null ? fmt(s.min) : '\u2014'}</td>
       <td class="py-2.5 text-sm font-mono text-slate-400 text-center tabular-nums">${s.max !== null ? fmt(s.max) : '—'}</td>
     </tr>`;
     })
@@ -411,6 +421,242 @@ function _renderDetailScatter(s) {
             maxTicksLimit: 4,
           },
           title: { display: true, text: 'czas trwania', color: '#475569', font: { size: 9 } },
+        },
+      },
+    },
+  });
+}
+// ─── KPI metrics ────────────────────────────────────────────────────────────
+
+function _renderKPI(stats, grandTotal) {
+  const dead         = stats.find(s => s.id === 'dead');
+  const active       = stats.find(s => s.id === 'active');
+  const instructions = stats.find(s => s.id === 'instructions');
+  const coaching     = stats.find(s => s.id === 'coaching');
+
+  const deadPct    = grandTotal > 0 ? Math.round((dead.total / grandTotal) * 100)         : 0;
+  const activePct  = grandTotal > 0 ? Math.round((active.total / grandTotal) * 100)       : 0;
+  const instrRatio = active?.total > 0 ? (instructions.total / active.total).toFixed(2)  : '\u2014';
+  const coachRatio = active?.total > 0 ? (coaching.total / active.total).toFixed(2)      : '\u2014';
+
+  const sorted  = [...history].sort((a, b) => a.startedAt - b.startedAt);
+  const changes = sorted.reduce((n, seg, i) => i > 0 && seg.id !== sorted[i - 1].id ? n + 1 : n, 0);
+
+  // Time to first coaching from training start
+  const t0 = history.length > 0 ? Math.min(...history.map(e => e.startedAt)) : 0;
+  const firstCoaching = history.filter(e => e.id === 'coaching').sort((a, b) => a.startedAt - b.startedAt)[0];
+  const firstCoachingTime = firstCoaching ? Math.round((firstCoaching.startedAt - t0) / 1000) * 1000 : null;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val); };
+  set('kpi-dead-pct',       `${deadPct}%`);
+  set('kpi-active-pct',     `${activePct}%`);
+  set('kpi-instr-ratio',    instrRatio);
+  set('kpi-coach-ratio',    coachRatio);
+  set('kpi-changes',        changes);
+  set('kpi-first-coaching', firstCoachingTime !== null ? fmt(firstCoachingTime) : '\u2014');
+}
+
+// ─── 100% stacked bar ───────────────────────────────────────────────────────
+
+function _render100Bar(stats, grandTotal) {
+  const bar    = document.getElementById('stats-100bar');
+  const legend = document.getElementById('stats-100bar-legend');
+  if (!bar) return;
+
+  if (grandTotal === 0) {
+    bar.innerHTML = '<div style="flex:1;background:#334155;border-radius:0.5rem"></div>';
+    if (legend) legend.innerHTML = '';
+    return;
+  }
+
+  const nonZero = stats.filter(s => s.total > 0);
+  bar.innerHTML = nonZero
+    .map(s => {
+      const pct   = (s.total / grandTotal) * 100;
+      const label = pct >= 8 ? `${Math.round(pct)}%` : '';
+      return `<div style="flex:${pct};background:${s.color};min-width:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.85)" title="${s.label}: ${Math.round(pct)}%">${label}</div>`;
+    })
+    .join('');
+
+  if (legend) {
+    legend.innerHTML = nonZero
+      .map(s => {
+        const pct = Math.round((s.total / grandTotal) * 100);
+        return `<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${s.color}"></span><span style="font-size:12px;color:#94a3b8">${s.label} <strong style="color:#e2e8f0">${pct}%</strong></span></div>`;
+      })
+      .join('');
+  }
+}
+
+// ─── Entries per category bar chart ─────────────────────────────────────────
+
+function _median(durations) {
+  if (durations.length === 0) return null;
+  const sorted = [...durations].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+function _renderEntriesChart(stats) {
+  const canvas = document.getElementById('entries-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (entriesChart) { entriesChart.destroy(); entriesChart = null; }
+
+  entriesChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels:   stats.map(s => s.abbr),
+      datasets: [{
+        label:           'Liczba odcink\u00f3w',
+        data:            stats.map(s => s.count),
+        backgroundColor: stats.map(s => s.color + 'cc'),
+        borderColor:     stats.map(s => s.color),
+        borderWidth:     1.5,
+        borderRadius:    4,
+      }],
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e293b',
+          borderColor:     '#334155',
+          borderWidth:     1,
+          titleColor:      '#94a3b8',
+          bodyColor:       '#f1f5f9',
+          padding:         10,
+          callbacks: {
+            title: (items) => stats[items[0].dataIndex].label,
+            label: (ctx) => {
+              const s = stats[ctx.dataIndex];
+              if (s.count === 0) return ['  Brak danych'];
+              const durations = history.filter(e => e.id === s.id).map(e => e.duration);
+              const avgMs    = Math.round(s.total / s.count);
+              const medianMs = _median(durations);
+              return [
+                `  Odcinki:      ${ctx.parsed.y}`,
+                `  \u015ar. czas:    ${fmt(avgMs)}`,
+                `  Mediana:      ${medianMs !== null ? fmt(medianMs) : '\u2014'}`,
+                `  Najd\u0142u\u017cszy:  ${s.max !== null ? fmt(s.max) : '\u2014'}`,
+                `  Najkr\u00f3tszy:  ${s.min !== null ? fmt(s.min) : '\u2014'}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid:   { display: false },
+          border: { color: 'rgba(148,163,184,0.15)' },
+          ticks:  {
+            color: (ctx) => stats[ctx.index]?.color ?? '#64748b',
+            font:  { size: 11, family: 'Inter, sans-serif', weight: '700' },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid:   { color: 'rgba(148,163,184,0.07)' },
+          border: { color: 'rgba(148,163,184,0.15)' },
+          ticks:  {
+            color:     '#64748b',
+            font:      { size: 10, family: 'Inter, sans-serif' },
+            precision: 0,
+          },
+        },
+      },
+    },
+  });
+}
+
+// ─── Coaching after active scatter chart ─────────────────────────────────────
+
+function _renderCoachingScatter() {
+  const canvas = document.getElementById('coaching-scatter-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (coachingScatterChart) { coachingScatterChart.destroy(); coachingScatterChart = null; }
+
+  const sorted = [...history].sort((a, b) => a.startedAt - b.startedAt);
+  const t0     = sorted.length > 0 ? sorted[0].startedAt : 0;
+
+  // Build points: find consecutive active → coaching transitions
+  const points = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const curr = sorted[i];
+    if (prev.id === 'active' && curr.id === 'coaching') {
+      points.push({
+        x:             Math.round((curr.startedAt - t0) / 1000),
+        y:             Math.round(prev.duration / 1000),
+        coachDuration: curr.duration,
+      });
+    }
+  }
+
+  const coachColor = TIMER_COLORS['coaching'];
+
+  coachingScatterChart = new Chart(canvas, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label:            'Coaching po aktywnym',
+        data:             points,
+        backgroundColor:  coachColor + 'cc',
+        borderColor:      coachColor,
+        borderWidth:      1.5,
+        pointRadius:      7,
+        pointHoverRadius: 10,
+      }],
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e293b',
+          borderColor:     coachColor,
+          borderWidth:     1,
+          titleColor:      '#94a3b8',
+          bodyColor:       '#f1f5f9',
+          padding:         10,
+          callbacks: {
+            title: (items) => `Minuta treningu: ${fmt(items[0].parsed.x * 1000)}`,
+            label: (ctx) => {
+              const p = points[ctx.dataIndex];
+              return [
+                `  Czas aktywny przed: ${fmt(ctx.parsed.y * 1000)}`,
+                `  Czas trwania coachingu: ${fmt(p.coachDuration)}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          type:   'linear',
+          grid:   { color: 'rgba(148,163,184,0.07)' },
+          border: { color: 'rgba(148,163,184,0.15)' },
+          ticks:  {
+            color:         '#64748b',
+            font:          { size: 10, family: 'Inter, sans-serif' },
+            callback:      (v) => fmt(Math.round(v) * 1000),
+            maxTicksLimit: 6,
+          },
+          title: { display: true, text: 'minuta treningu', color: '#475569', font: { size: 10 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid:   { color: 'rgba(148,163,184,0.07)' },
+          border: { color: 'rgba(148,163,184,0.15)' },
+          ticks:  {
+            color:         '#64748b',
+            font:          { size: 10, family: 'Inter, sans-serif' },
+            callback:      (v) => fmt(Math.round(v) * 1000),
+            maxTicksLimit: 5,
+          },
+          title: { display: true, text: 'czas aktywny przed', color: '#475569', font: { size: 10 } },
         },
       },
     },

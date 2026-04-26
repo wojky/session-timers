@@ -351,22 +351,41 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       return cells;
     }
 
+    // Wipe any existing in-memory + localStorage history so the import starts clean
+    clearAllHistory();
+
     // Build label→id map from TIMER_LABELS
     const labelToId = Object.fromEntries(
       Object.entries(TIMER_LABELS).map(([id, label]) => [label, id])
     );
+
+    // Parse Polish locale date string: "20.04.2026, 18:32:35"
+    function parsePlDate(str) {
+      const m = str.trim().match(/^(\d{2})\.(\d{2})\.(\d{4}),\s*(\d{2}):(\d{2}):(\d{2})$/);
+      if (!m) return null;
+      return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +m[6]).getTime();
+    }
+
+    // Pre-scan: detect if durations are in seconds (old export) vs milliseconds (current export).
+    // Heuristic: if the max duration value across all rows is < 10000, the file was exported
+    // in seconds (old format) and we must multiply by 1000 to convert to ms.
+    let maxRawDuration = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const raw = parseInt(parseRow(lines[i])[3] ?? '0', 10);
+      if (raw > maxRawDuration) maxRawDuration = raw;
+    }
+    const durationScale = maxRawDuration < 10000 ? 1000 : 1;
 
     let imported = 0;
     for (let i = 1; i < lines.length; i++) {
       const cols = parseRow(lines[i]);
       // columns: Lp., Licznik, Start (czas lokalny), Czas trwania (ms), Komentarz
       const label    = cols[1]?.trim() ?? '';
-      const duration = parseInt(cols[3] ?? '0', 10);
+      const duration = parseInt(cols[3] ?? '0', 10) * durationScale;
       const comment  = cols[4]?.trim() ?? '';
 
-      // Reconstruct startedAt: derive from cumulativeTotal when available, else estimate
-      // We use index as fallback offset since we can't reliably parse locale-formatted dates
-      const startedAt = Date.now() - (lines.length - i) * 1000;
+      // Parse the actual start time from the CSV — fall back to sequential offset only when unparseable
+      const startedAt = parsePlDate(cols[2] ?? '') ?? (Date.now() - (lines.length - i) * 1000);
 
       const id = labelToId[label];
       if (!id && label !== 'Notatka') continue; // skip unknown rows

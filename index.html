@@ -848,6 +848,90 @@
             >0</span
           >
         </div>
+
+        <!-- KPI metrics -->
+        <div id="stats-kpi" class="grid grid-cols-2 gap-2">
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Czas martwy</p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none">?</span>
+                <div class="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+                  Udział czasu martwego (przerwy, organizacja) w całkowitym czasie treningu. Im niższy %, tym efektywniej wykorzystany czas.
+                </div>
+              </div>
+            </div>
+            <p id="kpi-dead-pct" class="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Czas aktywny</p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none">?</span>
+                <div class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+                  Udział czasu aktywnej gry (zawodnicy w ruchu, akcja) w całkowitym czasie treningu. Cel: jak najwyższy %.
+                </div>
+              </div>
+            </div>
+            <p id="kpi-active-pct" class="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Instrukcje / Aktywny</p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none">?</span>
+                <div class="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+                  Stosunek czasu tłumaczenia instrukcji do czasu aktywnego. Wartość 0,20 oznacza 20 s instrukcji na każde 100 s gry.
+                </div>
+              </div>
+            </div>
+            <p id="kpi-instr-ratio" class="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Coaching / Aktywny</p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none">?</span>
+                <div class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+                  Stosunek czasu coachingu do czasu aktywnego. Wartość 0,10 oznacza 10 s coachingu na każde 100 s gry.
+                </div>
+              </div>
+            </div>
+            <p id="kpi-coach-ratio" class="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700 col-span-2">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Zmiany kategorii</p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none">?</span>
+                <div class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+                  Liczba przełączeń między różnymi licznikami podczas treningu. Wysoka liczba może oznaczać dynamiczny trening lub częste przerwy.
+                </div>
+              </div>
+            </div>
+            <p id="kpi-changes" class="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">—</p>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700 col-span-2">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Czas do 1. coachingu</p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none">?</span>
+                <div class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+                  Czas od początku treningu do pierwszego odcinka coachingu. Pokazuje, jak szybko trener zareagował korektą po raz pierwszy.
+                </div>
+              </div>
+            </div>
+            <p id="kpi-first-coaching" class="text-2xl font-bold text-slate-100 mt-0.5 tabular-nums">—</p>
+          </div>
+        </div>
+
+        <!-- 100% time distribution bar -->
+        <div class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Rozkład czasu</h3>
+          <div id="stats-100bar" class="flex h-7 rounded-lg overflow-hidden"></div>
+          <div id="stats-100bar-legend" class="flex flex-wrap gap-x-4 gap-y-1.5 mt-3"></div>
+        </div>
+
         <!-- Summary table -->
         <div
           class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700"
@@ -868,7 +952,7 @@
             >
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full min-w-[400px]">
+            <table class="w-full min-w-[480px]">
               <thead>
                 <tr>
                   <th
@@ -890,6 +974,11 @@
                     class="text-center text-xs text-slate-500 font-medium pb-3"
                   >
                     Odcinki
+                  </th>
+                  <th
+                    class="text-center text-xs text-slate-500 font-medium pb-3"
+                  >
+                    Śr.
                   </th>
                   <th
                     class="text-center text-xs text-slate-500 font-medium pb-3"
@@ -938,6 +1027,23 @@
           </h3>
           <div class="max-w-xs mx-auto">
             <canvas id="radar-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Entries per category chart -->
+        <div class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Liczba odcinków</h3>
+          <div style="height: 150px; position: relative">
+            <canvas id="entries-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Coaching after active scatter chart -->
+        <div class="flex-shrink-0 bg-slate-800 rounded-2xl p-4 border border-slate-700">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Coaching po czasie aktywnym</h3>
+          <p class="text-xs text-slate-500 mb-3">Każda kropka to moment wejścia w coaching — oś X: kiedy w treningu, oś Y: ile aktywnego czasu minęło przed przerwą.</p>
+          <div style="height: 200px; position: relative">
+            <canvas id="coaching-scatter-chart"></canvas>
           </div>
         </div>
       </div>
