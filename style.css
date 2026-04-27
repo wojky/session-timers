@@ -24,12 +24,21 @@
 #notes-dialog,
 #record-dialog,
 #export-dialog,
-#category-dialog,
-#history-dialog {
+#category-dialog {
   margin: auto;
   padding: 0;
   max-height: 90dvh;
   overflow-y: auto;
+}
+
+/* History dialog — explicit mobile-safe sizing */
+#history-dialog {
+  margin: 0.75rem auto;
+  padding: 0;
+  width: calc(100dvw - 1.5rem);
+  max-width: 26rem;
+  max-height: calc(100dvh - 1.5rem);
+  overflow: hidden;
 }
 #notes-dialog::backdrop,
 #record-dialog::backdrop,

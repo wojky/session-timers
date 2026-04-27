@@ -8,29 +8,54 @@
 let _wakeLock = null;
 let _noSleep = null;
 
+function _setWakeLockStatus(state) {
+  // state: 'on-native' | 'on-nosleep' | 'off' | 'checking'
+  const el = document.getElementById('wakelock-status');
+  if (!el) return;
+  const cfg = {
+    'on-native':  { label: '☀️ ekran: ON (natywny)',   cls: 'bg-green-900/60 text-green-400 border-green-700/50' },
+    'on-nosleep': { label: '☀️ ekran: ON (NoSleep)',   cls: 'bg-green-900/60 text-green-400 border-green-700/50' },
+    'off':        { label: '🌙 ekran: BRAK blokady', cls: 'bg-red-900/60 text-red-400 border-red-700/50' },
+    'checking':   { label: 'ekran: sprawdzam…',           cls: 'bg-slate-700/60 text-slate-500 border-slate-600/50' },
+  };
+  const c = cfg[state] || cfg.off;
+  el.textContent = c.label;
+  el.className = `text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${c.cls}`;
+}
+
 async function _acquireWakeLock() {
   if ('wakeLock' in navigator) {
     // Native Wake Lock API (Chrome, Edge, Android, Safari 16.4+)
     try {
       _wakeLock = await navigator.wakeLock.request('screen');
-    } catch (_) { /* denied or not supported */ }
+      _setWakeLockStatus('on-native');
+      _wakeLock.addEventListener('release', () => _setWakeLockStatus('off'));
+    } catch (e) {
+      _setWakeLockStatus('off');
+    }
   } else if (window.NoSleep) {
     // Fallback: NoSleep.js (iOS Safari, Firefox, etc.)
     // Must be triggered inside a user-gesture on first call — we defer to
     // the first user interaction instead of calling immediately.
     if (!_noSleep) {
       _noSleep = new window.NoSleep();
+      _setWakeLockStatus('off'); // not yet active until first touch
       const _enableNoSleep = () => {
-        _noSleep.enable();
+        _noSleep.enable()
+          .then(() => _setWakeLockStatus('on-nosleep'))
+          .catch(() => _setWakeLockStatus('off'));
         document.removeEventListener('touchstart', _enableNoSleep, true);
         document.removeEventListener('click',      _enableNoSleep, true);
       };
       document.addEventListener('touchstart', _enableNoSleep, true);
       document.addEventListener('click',      _enableNoSleep, true);
     }
+  } else {
+    _setWakeLockStatus('off');
   }
 }
 
+_setWakeLockStatus('checking');
 _acquireWakeLock();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') _acquireWakeLock();
