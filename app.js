@@ -9,13 +9,13 @@
 let _noSleep = null;
 
 function _setWakeLockStatus(state) {
-  // state: 'on' | 'off' | 'checking'
+  // state: 'on' | 'waiting' | 'off'
   const el = document.getElementById('wakelock-status');
   if (!el) return;
   const cfg = {
-    'on':       { label: '☀️ ekran: ON',          cls: 'bg-green-900/60 text-green-400 border-green-700/50' },
-    'off':      { label: '🌙 ekran: BRAK blokady', cls: 'bg-red-900/60 text-red-400 border-red-700/50' },
-    'checking': { label: 'ekran: sprawdzam…',      cls: 'bg-slate-700/60 text-slate-500 border-slate-600/50' },
+    'on':      { label: '☀️ ekran: ON',             cls: 'bg-green-900/60 text-green-400 border-green-700/50' },
+    'waiting': { label: '👆 ekran: dotknij ekran',  cls: 'bg-amber-900/60 text-amber-400 border-amber-700/50' },
+    'off':     { label: '🌙 ekran: BRAK blokady',   cls: 'bg-red-900/60 text-red-400 border-red-700/50' },
   };
   const c = cfg[state] || cfg.off;
   el.textContent = c.label;
@@ -23,26 +23,36 @@ function _setWakeLockStatus(state) {
 }
 
 function _initNoSleep() {
-  if (_noSleep || !window.NoSleep) return;
+  if (!window.NoSleep) {
+    alert('[WakeLock] NoSleep.js nie załadowany (window.NoSleep brak)');
+    _setWakeLockStatus('off'); return;
+  }
   _noSleep = new window.NoSleep();
-  const _enable = () => {
+  const hasNativeWL = 'wakeLock' in navigator;
+  alert(`[WakeLock] NoSleep załadowany.\nnative wakeLock API: ${hasNativeWL}\nuserAgent: ${navigator.userAgent.slice(0, 80)}`);
+  // Native Wake Lock API (Chrome/Edge/Android/Safari 16.4+) works immediately.
+  // Video fallback (iOS Safari) requires a user gesture first.
+  if (hasNativeWL) {
     _noSleep.enable()
-      .then(() => _setWakeLockStatus('on'))
-      .catch(() => _setWakeLockStatus('off'));
-    document.removeEventListener('touchstart', _enable, true);
-    document.removeEventListener('click',      _enable, true);
-  };
-  document.addEventListener('touchstart', _enable, true);
-  document.addEventListener('click',      _enable, true);
+      .then(() => { _setWakeLockStatus('on'); alert('[WakeLock] native enable() OK'); })
+      .catch((e) => { _setWakeLockStatus('off'); alert(`[WakeLock] native enable() BŁĄD: ${e}`); });
+  } else {
+    // iOS Safari — must wait for first touch/click
+    _setWakeLockStatus('waiting');
+    const _enable = () => {
+      alert('[WakeLock] gest wykryty, wywołuję enable()…');
+      _noSleep.enable()
+        .then(() => { _setWakeLockStatus('on'); alert('[WakeLock] NoSleep enable() OK'); })
+        .catch((e) => { _setWakeLockStatus('off'); alert(`[WakeLock] NoSleep enable() BŁĄD: ${e}`); });
+      document.removeEventListener('touchstart', _enable, true);
+      document.removeEventListener('click',      _enable, true);
+    };
+    document.addEventListener('touchstart', _enable, true);
+    document.addEventListener('click',      _enable, true);
+  }
 }
 
-_setWakeLockStatus('checking');
-if (window.NoSleep) {
-  _initNoSleep();
-  _setWakeLockStatus('off'); // will flip to 'on' after first gesture
-} else {
-  _setWakeLockStatus('off');
-}
+_initNoSleep();
 
 // ── PWA service worker ────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
