@@ -1,7 +1,8 @@
-const CACHE = 'session-timer-v70';
+const CACHE = 'session-timer-v72';
 const ASSETS = [
   './',
   './index.html',
+  './nosleep.min.js',
   './app.js',
   './timers.js',
   './ui.js',

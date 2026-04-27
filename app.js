@@ -2,6 +2,40 @@
  * app.js — Entry point. Wires timers.js + ui.js to the DOM.
  */
 
+// ── Wake Lock — keep screen on ────────────────────────────────────────────────
+// Use native Wake Lock API where available; fall back to NoSleep.js (video
+// trick) for iOS and other environments that don't support the API.
+let _wakeLock = null;
+let _noSleep = null;
+
+async function _acquireWakeLock() {
+  if ('wakeLock' in navigator) {
+    // Native Wake Lock API (Chrome, Edge, Android, Safari 16.4+)
+    try {
+      _wakeLock = await navigator.wakeLock.request('screen');
+    } catch (_) { /* denied or not supported */ }
+  } else if (window.NoSleep) {
+    // Fallback: NoSleep.js (iOS Safari, Firefox, etc.)
+    // Must be triggered inside a user-gesture on first call — we defer to
+    // the first user interaction instead of calling immediately.
+    if (!_noSleep) {
+      _noSleep = new window.NoSleep();
+      const _enableNoSleep = () => {
+        _noSleep.enable();
+        document.removeEventListener('touchstart', _enableNoSleep, true);
+        document.removeEventListener('click',      _enableNoSleep, true);
+      };
+      document.addEventListener('touchstart', _enableNoSleep, true);
+      document.addEventListener('click',      _enableNoSleep, true);
+    }
+  }
+}
+
+_acquireWakeLock();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _acquireWakeLock();
+});
+
 // ── PWA service worker ────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   // Auto-reload when a new SW takes control (after skipWaiting + clients.claim).
