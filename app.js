@@ -24,32 +24,36 @@ function _setWakeLockStatus(state) {
 
 function _initNoSleep() {
   if (!window.NoSleep) {
-    alert('[WakeLock] NoSleep.js nie załadowany (window.NoSleep brak)');
     _setWakeLockStatus('off'); return;
   }
   _noSleep = new window.NoSleep();
-  const hasNativeWL = 'wakeLock' in navigator;
-  alert(`[WakeLock] NoSleep załadowany.\nnative wakeLock API: ${hasNativeWL}\nuserAgent: ${navigator.userAgent.slice(0, 80)}`);
-  // Native Wake Lock API (Chrome/Edge/Android/Safari 16.4+) works immediately.
-  // Video fallback (iOS Safari) requires a user gesture first.
-  if (hasNativeWL) {
+  _setWakeLockStatus('waiting');
+
+  // iOS Safari requires Wake Lock / video play() to be triggered from a
+  // direct click on an element — document-level touchstart capture doesn't
+  // satisfy the user-activation requirement. We make the status badge itself
+  // the activation button: one tap activates the lock.
+  const _doEnable = () => {
     _noSleep.enable()
-      .then(() => { _setWakeLockStatus('on'); alert('[WakeLock] native enable() OK'); })
-      .catch((e) => { _setWakeLockStatus('off'); alert(`[WakeLock] native enable() BŁĄD: ${e}`); });
-  } else {
-    // iOS Safari — must wait for first touch/click
-    _setWakeLockStatus('waiting');
-    const _enable = () => {
-      alert('[WakeLock] gest wykryty, wywołuję enable()…');
-      _noSleep.enable()
-        .then(() => { _setWakeLockStatus('on'); alert('[WakeLock] NoSleep enable() OK'); })
-        .catch((e) => { _setWakeLockStatus('off'); alert(`[WakeLock] NoSleep enable() BŁĄD: ${e}`); });
-      document.removeEventListener('touchstart', _enable, true);
-      document.removeEventListener('click',      _enable, true);
-    };
-    document.addEventListener('touchstart', _enable, true);
-    document.addEventListener('click',      _enable, true);
+      .then(() => _setWakeLockStatus('on'))
+      .catch(() => _setWakeLockStatus('off'));
+  };
+
+  const statusBtn = document.getElementById('wakelock-status');
+  if (statusBtn) {
+    statusBtn.addEventListener('click', () => {
+      if (_noSleep.isEnabled) return;
+      _doEnable();
+    });
   }
+
+  // On platforms where any click works (Chrome/Android/desktop), also
+  // activate on first click anywhere so user doesn't have to tap the badge.
+  const _onFirstClick = () => {
+    if (!_noSleep.isEnabled) _doEnable();
+    document.removeEventListener('click', _onFirstClick, true);
+  };
+  document.addEventListener('click', _onFirstClick, true);
 }
 
 _initNoSleep();
