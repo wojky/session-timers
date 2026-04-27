@@ -60,7 +60,7 @@
       <div
         class="flex items-center justify-between px-4 py-4 border-b border-slate-700"
       >
-        <span
+        <button
           class="text-sm font-semibold text-slate-200 uppercase tracking-wider"
           >Ustawienia</span
         >
@@ -332,34 +332,6 @@
             <circle cx="12" cy="17" r=".5" fill="currentColor" />
           </svg>
         </button>
-        <!-- Record button -->
-        <div class="relative">
-          <button
-            id="btn-record"
-            class="p-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-500 hover:text-red-400 hover:border-red-500 transition-colors"
-            aria-label="Nagrywanie"
-            title="Nagrywanie (beta)"
-          >
-            <svg
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="9" y="2" width="6" height="11" rx="3" />
-              <path d="M5 10a7 7 0 0 0 14 0" />
-              <line x1="12" y1="17" x2="12" y2="21" />
-              <line x1="9" y1="21" x2="15" y2="21" />
-            </svg>
-          </button>
-          <span
-            class="absolute -top-1.5 -right-1.5 text-[9px] font-bold leading-none bg-amber-500 text-slate-900 px-1 py-0.5 rounded-full pointer-events-none"
-            >beta</span
-          >
-        </div>
         <!-- View toggle -->
         <div
           class="flex items-center gap-1 bg-slate-800 rounded-xl p-1 border border-slate-700"
@@ -409,6 +381,88 @@
       </div>
     </header>
 
+    <!-- Action bar -->
+    <div
+      id="action-bar"
+      class="flex-shrink-0 flex items-center gap-2 max-w-[720px] w-full mx-auto"
+    >
+      <div class="group relative flex-1">
+        <button
+          id="btn-tag"
+          disabled
+          class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700/50 bg-slate-800/40 text-slate-600 cursor-not-allowed text-xs font-medium"
+        >
+          <svg
+            class="w-3.5 h-3.5 flex-shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          Tag
+          <svg class="w-3 h-3 flex-shrink-0 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        </button>
+        <button type="button" class="absolute inset-0 cursor-default focus:outline-none rounded-xl" aria-label="Informacja o funkcji Tag"></button>
+        <span class="pointer-events-none absolute bottom-full left-0 mb-2 w-44 text-center text-[10px] text-slate-300 bg-slate-700 rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-20">
+          Trwają prace nad tą funkcją
+        </span>
+      </div>
+      <div class="relative flex-1">
+        <button
+          id="btn-record"
+          class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-400 hover:text-red-400 hover:border-red-500/60 transition-colors text-xs font-medium"
+        >
+          <svg
+            class="w-3.5 h-3.5 flex-shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="9" y="2" width="6" height="11" rx="3" />
+            <path d="M5 10a7 7 0 0 0 14 0" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+            <line x1="9" y1="21" x2="15" y2="21" />
+          </svg>
+          Notatka
+        </button>
+        <span
+          class="pointer-events-none absolute -top-1.5 -right-1.5 text-[9px] font-bold leading-none bg-amber-500 text-slate-900 px-1 py-0.5 rounded-full"
+          >beta</span
+        >
+      </div>
+      <button
+        id="btn-history"
+        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors text-xs font-medium"
+      >
+        <svg
+          class="w-3.5 h-3.5 flex-shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+          <polyline points="12 7 12 12 15 15" />
+        </svg>
+        Historia
+      </button>
+    </div>
+
     <!-- Timers grid -->
     <main
       class="flex-1 min-h-0 flex flex-col gap-3 max-w-[720px] w-full mx-auto"
@@ -416,7 +470,7 @@
     >
       <!-- Timer: Czas aktywny -->
       <div
-        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200"
+        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-2 border border-slate-700 transition-all duration-200"
         data-timer-id="active"
       >
         <div class="flex items-center justify-between mb-2">
@@ -482,7 +536,7 @@
 
       <!-- Timer: Martwy czas -->
       <div
-        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200"
+        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-2 border border-slate-700 transition-all duration-200"
         data-timer-id="dead"
       >
         <div class="flex items-center justify-between mb-2">
@@ -548,7 +602,7 @@
 
       <!-- Timer: Coaching -->
       <div
-        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200"
+        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-2 border border-slate-700 transition-all duration-200"
         data-timer-id="coaching"
       >
         <div class="flex items-center justify-between mb-2">
@@ -614,7 +668,7 @@
 
       <!-- Timer: Tłumaczenie instrukcji -->
       <div
-        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200"
+        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-2 border border-slate-700 transition-all duration-200"
         data-timer-id="instructions"
       >
         <div class="flex items-center justify-between mb-2">
@@ -680,7 +734,7 @@
 
       <!-- Timer: Motoryka -->
       <div
-        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-3 border border-slate-700 transition-all duration-200"
+        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-2 border border-slate-700 transition-all duration-200"
         data-timer-id="motor"
       >
         <div class="flex items-center justify-between mb-2">
@@ -816,8 +870,9 @@
 
       <!-- Content (hidden until there is data) -->
       <div id="stats-content" class="hidden flex flex-col gap-3 pb-1">
-        <!-- Notes button -->
-        <div class="relative self-start">
+        <!-- Notes + History buttons -->
+        <div class="flex items-center gap-2">
+        <div class="relative">
           <button
             id="btn-notes"
             class="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 transition-colors"
@@ -848,6 +903,39 @@
             >0</span
           >
         </div>
+        <button
+          id="btn-history-stats"
+          class="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <polyline points="12 7 12 12 15 15" />
+          </svg>
+          Historia
+        </button>
+        <div class="group relative">
+          <button
+            disabled
+            class="flex items-center gap-2 text-xs text-slate-600 border border-slate-700/50 bg-slate-800/40 rounded-xl px-3 py-2 cursor-not-allowed"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+              <line x1="7" y1="7" x2="7.01" y2="7" />
+            </svg>
+            Tagi
+            <svg class="w-3 h-3 flex-shrink-0 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+          </button>
+          <button type="button" class="absolute inset-0 cursor-default focus:outline-none rounded-xl" aria-label="Informacja o funkcji Tagi"></button>
+          <span class="pointer-events-none absolute bottom-full right-0 mb-2 w-44 text-center text-[10px] text-slate-300 bg-slate-700 rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-20">
+            Trwają prace nad tą funkcją
+          </span>
+        </div>
+        </div>
 
         <!-- KPI metrics -->
         <div id="stats-kpi" class="grid grid-cols-2 gap-2">
@@ -859,12 +947,11 @@
                 Czas martwy
               </p>
               <div class="relative group ml-auto flex-shrink-0">
-                <span
-                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none"
-                  >?</span
-                >
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button">?</button>
                 <div
-                  class="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl"
+                  class="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl"
                 >
                   Udział czasu martwego (przerwy, organizacja) w całkowitym
                   czasie treningu. Im niższy %, tym efektywniej wykorzystany
@@ -887,12 +974,11 @@
                 Czas aktywny
               </p>
               <div class="relative group ml-auto flex-shrink-0">
-                <span
-                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none"
-                  >?</span
-                >
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button">?</button>
                 <div
-                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl"
+                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl"
                 >
                   Udział czasu aktywnej gry (zawodnicy w ruchu, akcja) w
                   całkowitym czasie treningu. Cel: jak najwyższy %.
@@ -914,12 +1000,11 @@
                 Instrukcje / Aktywny
               </p>
               <div class="relative group ml-auto flex-shrink-0">
-                <span
-                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none"
-                  >?</span
-                >
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button">?</button>
                 <div
-                  class="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl"
+                  class="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl"
                 >
                   Stosunek czasu tłumaczenia instrukcji do czasu aktywnego.
                   Wartość 0,20 oznacza 20 s instrukcji na każde 100 s gry.
@@ -941,12 +1026,11 @@
                 Coaching / Aktywny
               </p>
               <div class="relative group ml-auto flex-shrink-0">
-                <span
-                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none"
-                  >?</span
-                >
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button">?</button>
                 <div
-                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl"
+                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl"
                 >
                   Stosunek czasu coachingu do czasu aktywnego. Wartość 0,10
                   oznacza 10 s coachingu na każde 100 s gry.
@@ -970,12 +1054,11 @@
                 Zmiany kategorii
               </p>
               <div class="relative group ml-auto flex-shrink-0">
-                <span
-                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none"
-                  >?</span
-                >
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button">?</button>
                 <div
-                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl"
+                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl"
                 >
                   Liczba przełączeń między różnymi licznikami podczas treningu.
                   Wysoka liczba może oznaczać dynamiczny trening lub częste
@@ -1000,12 +1083,11 @@
                 Czas do 1. coachingu
               </p>
               <div class="relative group ml-auto flex-shrink-0">
-                <span
-                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold cursor-default select-none"
-                  >?</span
-                >
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button">?</button>
                 <div
-                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl"
+                  class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl"
                 >
                   Czas od początku treningu do pierwszego odcinka coachingu.
                   Pokazuje, jak szybko trener zareagował korektą po raz
@@ -1663,40 +1745,111 @@
               Ekran statystyk
             </h2>
             <p class="mb-3">
-              Przełącz się na ekran <span class="text-indigo-400 font-semibold">Statystyki</span> (dolny pasek nawigacyjny), aby zobaczyć szczegółową analizę bieżącej lub zaimportowanej sesji.
+              Przełącz się na ekran
+              <span class="text-indigo-400 font-semibold">Statystyki</span>
+              (dolny pasek nawigacyjny), aby zobaczyć szczegółową analizę
+              bieżącej lub zaimportowanej sesji.
             </p>
 
-            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">Wskaźniki KPI</h3>
+            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">
+              Wskaźniki KPI
+            </h3>
             <ul class="space-y-2 text-slate-400">
-              <li><span class="text-slate-200 font-medium">Czas martwy %</span> — udział czasu martwego w łącznym czasie treningu. Im niższy, tym efektywniej wykorzystany czas.</li>
-              <li><span class="text-slate-200 font-medium">Czas aktywny %</span> — udział czasu aktywnej gry. Cel: jak najwyższy odsetek.</li>
-              <li><span class="text-slate-200 font-medium">Instrukcje / Aktywny</span> — stosunek czasu tłumaczenia instrukcji do czasu aktywnego (np. 0,20 = 20 s instrukcji na 100 s gry).</li>
-              <li><span class="text-slate-200 font-medium">Coaching / Aktywny</span> — stosunek czasu coachingu do czasu aktywnego.</li>
-              <li><span class="text-slate-200 font-medium">Zmiany kategorii</span> — liczba przełączeń między licznikami; odzwierciedla dynamikę treningu.</li>
-              <li><span class="text-slate-200 font-medium">Czas do 1. coachingu</span> — jak szybko po starcie treningu trener wykonał pierwszą korektę coachingową.</li>
+              <li>
+                <span class="text-slate-200 font-medium">Czas martwy %</span> —
+                udział czasu martwego w łącznym czasie treningu. Im niższy, tym
+                efektywniej wykorzystany czas.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium">Czas aktywny %</span> —
+                udział czasu aktywnej gry. Cel: jak najwyższy odsetek.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium"
+                  >Instrukcje / Aktywny</span
+                >
+                — stosunek czasu tłumaczenia instrukcji do czasu aktywnego (np.
+                0,20 = 20 s instrukcji na 100 s gry).
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium"
+                  >Coaching / Aktywny</span
+                >
+                — stosunek czasu coachingu do czasu aktywnego.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium">Zmiany kategorii</span>
+                — liczba przełączeń między licznikami; odzwierciedla dynamikę
+                treningu.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium"
+                  >Czas do 1. coachingu</span
+                >
+                — jak szybko po starcie treningu trener wykonał pierwszą korektę
+                coachingową.
+              </li>
             </ul>
 
-            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">Rozkład czasu (pasek 100%)</h3>
+            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">
+              Rozkład czasu (pasek 100%)
+            </h3>
             <p class="mb-3 text-slate-400">
-              Kolorowy pasek pokazuje proporcjonalny udział każdej kategorii w łącznym czasie sesji. Legenda poniżej paska zawiera kolory i skróty: CA (Czas aktywny), MC (Martwy czas), CO (Coaching), TI (Tłumaczenie instrukcji), MO (Motoryka).
+              Kolorowy pasek pokazuje proporcjonalny udział każdej kategorii w
+              łącznym czasie sesji. Legenda poniżej paska zawiera kolory i
+              skróty: CA (Czas aktywny), MC (Martwy czas), CO (Coaching), TI
+              (Tłumaczenie instrukcji), MO (Motoryka).
             </p>
 
-            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">Tabela podsumowania</h3>
+            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">
+              Tabela podsumowania
+            </h3>
             <p class="mb-3 text-slate-400">
-              Dla każdej kategorii tabela pokazuje: łączny czas, udział procentowy, liczbę odcinków, średni czas odcinka (Śr.), najkrótszy (Min) i najdłuższy (Max). Kliknięcie wiersza otwiera szczegółowy wykres odcinków dla danej kategorii.
+              Dla każdej kategorii tabela pokazuje: łączny czas, udział
+              procentowy, liczbę odcinków, średni czas odcinka (Śr.), najkrótszy
+              (Min) i najdłuższy (Max). Kliknięcie wiersza otwiera szczegółowy
+              wykres odcinków dla danej kategorii.
             </p>
 
-            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">Wykresy</h3>
+            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">
+              Wykresy
+            </h3>
             <ul class="space-y-2 text-slate-400">
-              <li><span class="text-slate-200 font-medium">Oś czasu</span> — pokazuje kolejność i długość odcinków każdej kategorii na tle całej sesji.</li>
-              <li><span class="text-slate-200 font-medium">Radar</span> — wizualizuje proporcje między wszystkimi pięcioma kategoriami jednocześnie.</li>
-              <li><span class="text-slate-200 font-medium">Liczba odcinków</span> — wykres słupkowy z liczbą segmentów i szczegółami (mediana, min, max) w tooltipie.</li>
-              <li><span class="text-slate-200 font-medium">Coaching po aktywnym</span> — wykres punktowy pokazujący, po jak długim czasie aktywnym pojawił się coaching. Oś X: minuta treningu, oś Y: długość poprzedniego odcinka aktywnego.</li>
+              <li>
+                <span class="text-slate-200 font-medium">Oś czasu</span> —
+                pokazuje kolejność i długość odcinków każdej kategorii na tle
+                całej sesji.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium">Radar</span> —
+                wizualizuje proporcje między wszystkimi pięcioma kategoriami
+                jednocześnie.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium">Liczba odcinków</span>
+                — wykres słupkowy z liczbą segmentów i szczegółami (mediana,
+                min, max) w tooltipie.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium"
+                  >Coaching po aktywnym</span
+                >
+                — wykres punktowy pokazujący, po jak długim czasie aktywnym
+                pojawił się coaching. Oś X: minuta treningu, oś Y: długość
+                poprzedniego odcinka aktywnego.
+              </li>
             </ul>
 
-            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">Import CSV</h3>
+            <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">
+              Import CSV
+            </h3>
             <p class="text-slate-400">
-              Przycisk <span class="text-indigo-400 font-semibold">Importuj CSV</span> (ikona strzałki w górę) pozwala wczytać plik sesji zapisany wcześniej. Dane bieżącej sesji są zastępowane danymi z pliku. Aplikacja automatycznie wykrywa, czy plik zawiera czasy w sekundach (stary format) czy milisekundach (nowy format).
+              Przycisk
+              <span class="text-indigo-400 font-semibold">Importuj CSV</span>
+              (ikona strzałki w górę) pozwala wczytać plik sesji zapisany
+              wcześniej. Dane bieżącej sesji są zastępowane danymi z pliku.
+              Aplikacja automatycznie wykrywa, czy plik zawiera czasy w
+              sekundach (stary format) czy milisekundach (nowy format).
             </p>
           </section>
         </div>
@@ -1776,6 +1929,29 @@
           </button>
         </div>
       </div>
+    </dialog>
+
+    <!-- History dialog -->
+    <dialog
+      id="history-dialog"
+      class="bg-slate-800 border border-slate-700 rounded-2xl p-0 shadow-2xl w-full max-w-sm mx-auto"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700 flex-shrink-0">
+        <span class="text-sm font-semibold text-slate-100">Historia odcinków</span>
+        <button
+          id="history-dialog-close"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+          aria-label="Zamknij"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <!-- Legend -->
+      <div id="history-legend" class="flex flex-wrap gap-x-3 gap-y-1.5 px-5 py-3 border-b border-slate-700 flex-shrink-0"></div>
+      <!-- List -->
+      <div id="history-list" class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2 min-h-0"></div>
     </dialog>
 
     <!-- Record / speech-to-text dialog -->

@@ -167,6 +167,7 @@ function setView(view) {
   const goStats = view === 'stats';
   _timersPanel.classList.toggle('hidden', goStats);
   _statsPanel.classList.toggle('hidden', !goStats);
+  document.getElementById('action-bar')?.classList.toggle('hidden', goStats);
 
   // Toggle button styles
   _btnTimers.classList.toggle('text-indigo-400', !goStats);
@@ -680,3 +681,101 @@ document.querySelectorAll('.timer-visibility-toggle').forEach((checkbox) => {
     localStorage.setItem(_LS_VISIBILITY_KEY, JSON.stringify(vis));
   });
 });
+
+// ── History dialog ────────────────────────────────────────────────────────────
+
+const _historyDialog      = document.getElementById('history-dialog');
+const _historyDialogClose = document.getElementById('history-dialog-close');
+const _historyList        = document.getElementById('history-list');
+const _historyLegend      = document.getElementById('history-legend');
+
+const _HIST_META = {
+  active:       { abbr: 'CA', color: '#22d3ee', label: 'Czas aktywny' },
+  dead:         { abbr: 'MC', color: '#6366f1', label: 'Martwy czas' },
+  coaching:     { abbr: 'CO', color: '#f59e0b', label: 'Coaching' },
+  instructions: { abbr: 'TI', color: '#34d399', label: 'Tłumaczenie instrukcji' },
+  motor:        { abbr: 'MO', color: '#e879f9', label: 'Motoryka' },
+};
+
+function _fmtMs(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function _renderHistoryLegend() {
+  _historyLegend.innerHTML = Object.entries(_HIST_META).map(([, m]) => `
+    <span class="flex items-center gap-1.5 text-xs text-slate-400">
+      <span class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:${m.color}"></span>
+      <span class="font-bold" style="color:${m.color}">${m.abbr}</span>
+      <span>${m.label}</span>
+    </span>`).join('');
+}
+
+function _renderHistoryList() {
+  const entries = history.filter((e) => e.id !== 'note').slice().reverse();
+  if (entries.length === 0) {
+    _historyList.innerHTML = '<p class="text-sm text-slate-500 italic text-center py-6">Brak odcinków</p>';
+    return;
+  }
+
+  _historyList.innerHTML = '';
+  entries.forEach((entry) => {
+    const meta = _HIST_META[entry.id];
+    if (!meta) return;
+
+    const canSwap = entry.id === 'coaching' || entry.id === 'instructions';
+    const swapTarget = entry.id === 'coaching' ? 'instructions' : 'coaching';
+    const swapTargetMeta = _HIST_META[swapTarget];
+
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5';
+
+    row.innerHTML = `
+      <span class="w-3 h-3 rounded-sm flex-shrink-0" style="background:${meta.color}"></span>
+      <span class="text-xs font-bold flex-shrink-0" style="color:${meta.color}">${meta.abbr}</span>
+      <span class="text-xs text-slate-300 font-mono tabular-nums">${_fmtMs(entry.duration)}</span>
+      <span class="text-[10px] text-slate-600 ml-auto">${new Date(entry.startedAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>
+      ${canSwap ? `
+        <button
+          class="hist-swap flex-shrink-0 flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border border-slate-700 text-slate-400 transition-colors"
+          style="--swap-color:${swapTargetMeta.color}"
+          title="Zmień na ${swapTargetMeta.label}"
+          onmouseover="this.style.borderColor='${swapTargetMeta.color}66';this.style.color='${swapTargetMeta.color}'"
+          onmouseout="this.style.borderColor='';this.style.color=''"
+        >
+          <span class="w-2 h-2 rounded-sm" style="background:${swapTargetMeta.color}"></span>
+          ${swapTargetMeta.abbr}
+        </button>` : ''}
+    `;
+
+    if (canSwap) {
+      row.querySelector('.hist-swap').addEventListener('click', () => {
+        // Find original entry in history (reversed index)
+        const origIdx = history.indexOf(entry);
+        if (origIdx === -1) return;
+        history[origIdx] = {
+          ...entry,
+          id: swapTarget,
+          label: swapTargetMeta.label,
+        };
+        try { localStorage.setItem('session-timer-history', JSON.stringify(history)); } catch (_) {}
+        _renderHistoryList();
+      });
+    }
+
+    _historyList.appendChild(row);
+  });
+}
+
+document.getElementById('btn-history').addEventListener('click', () => {
+  _renderHistoryLegend();
+  _renderHistoryList();
+  _historyDialog.showModal();
+});
+document.getElementById('btn-history-stats')?.addEventListener('click', () => {
+  _renderHistoryLegend();
+  _renderHistoryList();
+  _historyDialog.showModal();
+});
+_historyDialogClose.addEventListener('click', () => _historyDialog.close());
+_historyDialog.addEventListener('click', (e) => { if (e.target === _historyDialog) _historyDialog.close(); });

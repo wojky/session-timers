@@ -24,7 +24,8 @@
 #notes-dialog,
 #record-dialog,
 #export-dialog,
-#category-dialog {
+#category-dialog,
+#history-dialog {
   margin: auto;
   padding: 0;
   max-height: 90dvh;
@@ -34,9 +35,16 @@
 #record-dialog::backdrop,
 #export-dialog::backdrop,
 #category-dialog::backdrop,
+#history-dialog::backdrop,
 #help-dialog::backdrop {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
+}
+
+#history-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* Help dialog — full screen with margins */
