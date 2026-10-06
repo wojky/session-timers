@@ -247,14 +247,34 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
     title:        'Nowa sesja?',
     body:         'Wszystkie timery zostaną wyzerowane i historia wyczyszczona. Czy na pewno chcesz kontynuować?',
     confirmLabel: 'Zacznij nową',
+    checkboxes:   TIMER_IDS.map((id) => ({
+      id,
+      label: TIMER_LABELS[id],
+      checked: id !== 'motor' && id !== 'technique',
+    })),
   });
   if (!confirmed) return;
+
+  const selectedTimerIds = new Set(
+    Array.from(document.querySelectorAll('#modal-checkboxes input:checked'))
+      .map((checkbox) => checkbox.value)
+  );
 
   TIMER_IDS.forEach((id) => {
     resetTimer(id);
     updateCard(id, 0, false);
   });
   clearAllHistory();
+
+  const visibility = {};
+  TIMER_IDS.forEach((id) => {
+    const visible = selectedTimerIds.has(id);
+    visibility[id] = visible;
+    const checkbox = document.querySelector(`.timer-visibility-toggle[data-target-timer="${id}"]`);
+    if (checkbox) checkbox.checked = visible;
+    _applyVisibility(id, visible);
+  });
+  localStorage.setItem(_LS_VISIBILITY_KEY, JSON.stringify(visibility));
 
   const dateEl = document.getElementById('session-date');
   const timeEl = document.getElementById('session-time');
@@ -408,7 +428,8 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       return cells;
     }
 
-    // Wipe any existing in-memory + localStorage history so the import starts clean
+    // Wipe any existing in-memory + localStorage history and reset all timer states
+    TIMER_IDS.forEach((id) => { resetTimer(id); updateCard(id, 0, false); });
     clearAllHistory();
 
     // Build label→id map from TIMER_LABELS
@@ -434,6 +455,9 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
     const durationScale = maxRawDuration < 10000 ? 1000 : 1;
 
     let imported = 0;
+    const timerTotalsMs = {};
+    TIMER_IDS.forEach((id) => { timerTotalsMs[id] = 0; });
+
     for (let i = 1; i < lines.length; i++) {
       const cols = parseRow(lines[i]);
       // columns: Lp., Licznik, Start (czas lokalny), Czas trwania (ms), Komentarz
@@ -460,12 +484,22 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       } else if (id) {
         const cumulativeTotal = history.reduce((s, x) => s + x.duration, 0) + duration;
         history.push({ id, label, startedAt, duration, cumulativeTotal });
+        timerTotalsMs[id] = (timerTotalsMs[id] ?? 0) + duration;
       }
       imported++;
     }
 
     if (imported > 0) {
       try { localStorage.setItem('session-timer-history', JSON.stringify(history)); } catch (_) {}
+
+      // Apply accumulated per-timer totals to timer state and UI
+      TIMER_IDS.forEach((id) => {
+        const totalSec = Math.floor((timerTotalsMs[id] ?? 0) / 1000);
+        setTimerSeconds(id, totalSec);
+        updateCard(id, totalSec, false);
+      });
+      updateTotalTime();
+
       setView('stats');
     }
 
@@ -751,6 +785,7 @@ const _HIST_META = {
   coaching:     { abbr: 'CO', color: '#f59e0b', label: 'Coaching' },
   instructions: { abbr: 'TI', color: '#34d399', label: 'Tłumaczenie instrukcji' },
   motor:        { abbr: 'MO', color: '#e879f9', label: 'Motoryka' },
+  technique:    { abbr: 'TE', color: '#a3e635', label: 'Technika' },
 };
 
 function _fmtMs(ms) {

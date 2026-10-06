@@ -13,6 +13,7 @@ export const TIMER_ABBR = {
   coaching:     'CO',
   motor:        'MO',
   instructions: 'TI',
+  technique:    'TE',
 };
 
 /** Accent colours per timer (indigo palette) */
@@ -22,6 +23,7 @@ const TIMER_COLORS = {
   coaching:     '#f59e0b',
   motor:        '#e879f9',
   instructions: '#34d399',
+  technique:    '#a3e635',
 };
 
 /** @type {any|null} Chart.js radar instance */

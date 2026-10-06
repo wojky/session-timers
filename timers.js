@@ -4,7 +4,7 @@
  * This module is stateful but framework-agnostic.
  */
 
-export const TIMER_IDS = ['active', 'dead', 'coaching', 'instructions', 'motor'];
+export const TIMER_IDS = ['active', 'dead', 'coaching', 'instructions', 'motor', 'technique'];
 
 /**
  * @typedef {Object} TimerState

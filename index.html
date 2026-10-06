@@ -6,12 +6,12 @@
     <title>Session Timer</title>
     <meta
       name="description"
-      content="Narzędzie dla koordynatorów do mierzenia czasu podczas wizytacji treningów — martwy czas, czas aktywny, coaching, tłumaczenie instrukcji."
+      content="Narzędzie dla koordynatorów do mierzenia czasu podczas wizytacji treningów — martwy czas, czas aktywny, coaching, tłumaczenie instrukcji, motoryka i technika."
     />
     <meta property="og:title" content="Session Timer" />
     <meta
       property="og:description"
-      content="Narzędzie dla koordynatorów do mierzenia czasu podczas wizytacji treningów — martwy czas, czas aktywny, coaching, tłumaczenie instrukcji."
+      content="Narzędzie dla koordynatorów do mierzenia czasu podczas wizytacji treningów — martwy czas, czas aktywny, coaching, tłumaczenie instrukcji, motoryka i technika."
     />
     <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
@@ -213,6 +213,25 @@
                 type="checkbox"
                 class="timer-visibility-toggle sr-only"
                 data-target-timer="motor"
+                checked
+              />
+              <div
+                class="visibility-switch w-9 h-5 bg-indigo-600 rounded-full relative transition-colors"
+                aria-hidden="true"
+              >
+                <div
+                  class="switch-dot absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"
+                ></div>
+              </div>
+            </label>
+            <label
+              class="flex items-center justify-between cursor-pointer py-1"
+            >
+              <span class="text-sm text-slate-300">Technika</span>
+              <input
+                type="checkbox"
+                class="timer-visibility-toggle sr-only"
+                data-target-timer="technique"
                 checked
               />
               <div
@@ -804,6 +823,72 @@
         </div>
       </div>
 
+      <!-- Timer: Technika -->
+      <div
+        class="timer-card flex-1 flex flex-col justify-between bg-slate-800 rounded-2xl px-4 py-2 border border-slate-700 transition-all duration-200"
+        data-timer-id="technique"
+      >
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5">
+            <span
+              class="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+              style="background: #a3e635"
+            ></span>
+            <span
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400"
+              >Technika</span
+            >
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="timer-status-badge text-xs font-medium text-slate-500"
+              >Zatrzymany</span
+            >
+            <div
+              class="w-2.5 h-2.5 rounded-full bg-slate-600 timer-indicator"
+            ></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <input
+            type="text"
+            class="timer-display flex-1 min-w-0 text-center text-2xl font-bold tracking-widest bg-transparent border border-slate-600 rounded-xl py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-slate-500 transition-colors"
+            value="00:00"
+            maxlength="5"
+            aria-label="Czas: Technika"
+          />
+          <button
+            class="timer-toggle flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors flex-shrink-0 w-28"
+          >
+            <svg
+              class="icon-play w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <svg
+              class="icon-pause w-4 h-4 hidden"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+            <span class="toggle-label">Start</span>
+          </button>
+          <button
+            class="timer-reset p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
+            aria-label="Resetuj"
+            title="Resetuj timer"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- Total time bar -->
       <div class="flex-shrink-0 flex items-center justify-between px-3 py-1">
         <span class="text-xs text-slate-500">Łączny czas</span>
@@ -1270,7 +1355,7 @@
       aria-labelledby="modal-title"
     >
       <div
-        class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+        class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto shadow-2xl"
       >
         <h3 id="modal-title" class="text-lg font-semibold text-slate-100 mb-2">
           Resetować timer?
@@ -1278,6 +1363,12 @@
         <p id="modal-body" class="text-slate-400 text-sm mb-6">
           Ta operacja wyzeruje czas. Czy na pewno chcesz kontynuować?
         </p>
+        <fieldset id="modal-options" class="hidden mb-6">
+          <legend class="text-sm font-semibold text-slate-200 mb-2">
+            Timery używane w nowej sesji
+          </legend>
+          <div id="modal-checkboxes" class="grid grid-cols-2 gap-x-3 gap-y-2"></div>
+        </fieldset>
         <div class="flex gap-3 justify-end">
           <button
             id="modal-cancel"
@@ -1571,7 +1662,7 @@
             <p class="mb-3">
               <strong class="text-slate-100">Session Timer</strong> to aplikacja
               PWA przeznaczona dla koordynatorów i trenerów sportowych.
-              Umożliwia precyzyjny pomiar czasu w podziale na pięć kategorii
+              Umożliwia precyzyjny pomiar czasu w podziale na sześć kategorii
               podczas trwania zajęć lub sesji treningowej.
             </p>
             <p class="mb-3">
@@ -1595,7 +1686,7 @@
               Liczniki
             </h2>
             <p class="mb-4">
-              Aplikacja mierzy czas w pięciu kategoriach. Tylko jeden licznik
+              Aplikacja mierzy czas w sześciu kategoriach. Tylko jeden licznik
               może być aktywny w danym momencie.
             </p>
             <ul class="space-y-4">
@@ -1665,6 +1756,19 @@
                     Czas przeznaczony na ćwiczenia motoryczne, podczas których
                     piłka nie jest używana wcale lub pojawia się jedynie w
                     charakterze elementu dodatkowego.
+                  </p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 w-3 h-3 rounded-sm flex-shrink-0"
+                  style="background: #a3e635"
+                ></span>
+                <div>
+                  <span class="font-semibold text-slate-100">Technika</span>
+                  <p class="mt-0.5 text-slate-400">
+                    Ćwiczenia techniczne z piłką, takie jak prowadzenie,
+                    podania, przyjęcia i strzały.
                   </p>
                 </div>
               </li>
@@ -1804,7 +1908,7 @@
               Kolorowy pasek pokazuje proporcjonalny udział każdej kategorii w
               łącznym czasie sesji. Legenda poniżej paska zawiera kolory i
               skróty: CA (Czas aktywny), MC (Martwy czas), CO (Coaching), TI
-              (Tłumaczenie instrukcji), MO (Motoryka).
+              (Tłumaczenie instrukcji), MO (Motoryka), TE (Technika).
             </p>
 
             <h3 class="text-sm font-semibold text-slate-200 mt-5 mb-2">
@@ -1828,7 +1932,7 @@
               </li>
               <li>
                 <span class="text-slate-200 font-medium">Radar</span> —
-                wizualizuje proporcje między wszystkimi pięcioma kategoriami
+                wizualizuje proporcje między wszystkimi sześcioma kategoriami
                 jednocześnie.
               </li>
               <li>
@@ -2063,6 +2167,27 @@
         </div>
       </div>
     </dialog>
+
+    <!-- Portrait orientation lock + landscape overlay -->
+    <script>
+      (function () {
+        /* ---- Orientation lock (PWA / Android) ---- */
+        function lockPortrait() {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('portrait').catch(function () {});
+          }
+        }
+        lockPortrait();
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) lockPortrait();
+        });
+        if (screen.orientation) {
+          screen.orientation.addEventListener('change', function () {
+            if (screen.orientation.type.startsWith('landscape')) lockPortrait();
+          });
+        }
+      })();
+    </script>
 
     <script src="nosleep.min.js"></script>
     <script type="module" src="app.js"></script>

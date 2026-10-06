@@ -95,17 +95,44 @@ export function updateCard(id, seconds, running) {
 const modal = document.getElementById('reset-modal');
 const modalConfirm = document.getElementById('modal-confirm');
 const modalCancel = document.getElementById('modal-cancel');
+const modalOptions = document.getElementById('modal-options');
+const modalCheckboxes = document.getElementById('modal-checkboxes');
 
 let _resolveFn = null;
 
 /**
  * Shows a confirmation modal. Returns a promise that resolves to true/false.
- * @param {{ title?: string, body?: string, confirmLabel?: string }} [opts]
+ * @param {{ title?: string, body?: string, confirmLabel?: string, checkboxes?: Array<{id:string, label:string, checked:boolean}> }} [opts]
  */
-export function confirmReset({ title, body, confirmLabel } = {}) {
+export function confirmReset({ title, body, confirmLabel, checkboxes } = {}) {
   if (title)        document.getElementById('modal-title').textContent   = title;
   if (body)         document.getElementById('modal-body').textContent    = body;
   if (confirmLabel) document.getElementById('modal-confirm').textContent = confirmLabel;
+  modalCheckboxes.replaceChildren();
+  if (checkboxes?.length) {
+    checkboxes.forEach(({ id, label, checked }) => {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.id = `modal-timer-${id}`;
+      input.value = id;
+      input.checked = checked;
+      input.className = 'w-4 h-4 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500';
+
+      const text = document.createElement('span');
+      text.className = 'text-sm text-slate-300';
+      text.textContent = label;
+
+      const option = document.createElement('label');
+      option.htmlFor = input.id;
+      option.className = 'flex items-center gap-2 cursor-pointer';
+      option.append(input, text);
+      modalCheckboxes.append(option);
+    });
+    modalOptions.classList.remove('hidden');
+  } else {
+    modalOptions.classList.add('hidden');
+  }
+
   return new Promise((resolve) => {
     _resolveFn = resolve;
     modal.classList.remove('hidden');

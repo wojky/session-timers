@@ -17,6 +17,7 @@ export const TIMER_LABELS = {
   coaching:     'Coaching',
   motor:        'Motoryka',
   instructions: 'Tłumaczenie instrukcji',
+  technique:    'Technika',
 };
 
 /** @type {Array<{id:string, label:string, startedAt:number, duration:number, cumulativeTotal:number}>} */
@@ -34,9 +35,9 @@ try {
 } catch (_) {}
 
 // Wall-clock timestamp when each timer last started (null = not running)
-const _segmentStart = { dead: null, active: null, coaching: null, motor: null, instructions: null };
+const _segmentStart = { dead: null, active: null, coaching: null, motor: null, instructions: null, technique: null };
 // Seconds value on the timer at the moment of last start (for precise duration calc)
-const _segmentStartSeconds = { dead: 0, active: 0, coaching: 0, motor: 0, instructions: 0 };
+const _segmentStartSeconds = { dead: 0, active: 0, coaching: 0, motor: 0, instructions: 0, technique: 0 };
 
 /**
  * Call when a timer starts.
