@@ -90,10 +90,12 @@ export function updateCoachingDuringControl(seconds, running, activeRunning) {
   const actionLabel = running ? 'Pauza' : 'Start';
   button.setAttribute('aria-label', `Coaching w trakcie — ${actionLabel}`);
   button.title = `Coaching w trakcie — ${actionLabel}`;
-  button.classList.toggle('bg-amber-500/20', running);
-  button.classList.toggle('text-amber-300', running);
+  button.classList.toggle('bg-amber-400', running);
+  button.classList.toggle('text-white', running);
+  button.classList.toggle('hover:bg-amber-500', running);
   button.classList.toggle('bg-slate-700', !running);
   button.classList.toggle('text-slate-400', !running);
+  button.classList.toggle('hover:bg-slate-600', !running);
   button.classList.toggle('opacity-50', button.disabled);
   button.classList.toggle('cursor-not-allowed', button.disabled);
 }

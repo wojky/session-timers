@@ -1,4 +1,4 @@
-const CACHE = 'session-timer-v87';
+const CACHE = 'session-timer-v90';
 const ASSETS = [
   './',
   './index.html',

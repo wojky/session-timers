@@ -11,6 +11,8 @@
  * }
  */
 
+import { TIMER_IDS } from './timers.js';
+
 export const TIMER_LABELS = {
   dead:         'Martwy czas',
   active:       'Czas aktywny',
@@ -165,6 +167,22 @@ export function recordNote(text, startedAt, trainingSeconds = 0) {
   };
   history.push(entry);
   _saveHistory();
+}
+
+/** Returns elapsed timer time at a wall-clock timestamp. */
+export function getTrainingSecondsAt(timestamp) {
+  const at = Number(timestamp);
+  if (!Number.isFinite(at)) return 0;
+
+  const elapsedMs = history.reduce((total, entry) => {
+    if (!TIMER_IDS.includes(entry.id)) return total;
+    const start = Number(entry.startedAt);
+    const duration = Number(entry.duration);
+    if (!Number.isFinite(start) || !Number.isFinite(duration) || duration <= 0 || start >= at) return total;
+    return total + Math.max(0, Math.min(at, start + duration) - start);
+  }, 0);
+
+  return Math.floor(elapsedMs / 1000);
 }
 
 function _saveHistory() {

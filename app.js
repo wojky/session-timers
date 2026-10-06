@@ -104,7 +104,7 @@ import {
   updateCoachingDuringControl,
 } from './ui.js';
 
-import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS, createRecordId } from './history.js';
+import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS, createRecordId, getTrainingSecondsAt } from './history.js';
 import { renderStats } from './stats.js';
 import { closeSettings } from './settings.js';
 
@@ -391,7 +391,7 @@ function _buildExportFilename(custom) {
 }
 
 function _doExportCSV(filename) {
-  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz', 'ID wpisu', 'Zawiera się w']];
+  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz', 'ID wpisu', 'Zawiera się w', 'Czas treningu (s)']];
   history.forEach((entry, i) => {
     const startLocal = new Date(entry.startedAt).toLocaleString('pl-PL');
     rows.push([
@@ -404,6 +404,9 @@ function _doExportCSV(filename) {
         : '',
       entry.recordId ?? '',
       entry.containsIn ?? '',
+      entry.id === 'note'
+        ? String(entry.trainingSeconds ?? getTrainingSecondsAt(entry.startedAt))
+        : '',
     ]);
   });
   const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -514,6 +517,11 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       const comment  = cols[4]?.trim() ?? '';
       const recordId = cols[5]?.trim() || createRecordId();
       const containsIn = cols[6]?.trim() || null;
+      const trainingSecondsRaw = cols[7]?.trim();
+      const trainingSeconds = trainingSecondsRaw !== undefined && trainingSecondsRaw !== ''
+        && Number.isFinite(Number(trainingSecondsRaw))
+        ? Math.max(0, Number(trainingSecondsRaw))
+        : null;
 
       // Parse the actual start time from the CSV — fall back to sequential offset only when unparseable
       const startedAt = parsePlDate(cols[2] ?? '') ?? (Date.now() - (lines.length - i) * 1000);
@@ -530,7 +538,9 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
           rating = prefixMatch[1] === '1' ? 'like' : prefixMatch[1] === '-1' ? 'dislike' : null;
           text = prefixMatch[2];
         }
-        history.push({ id: 'note', label: 'Notatka', startedAt, duration: 0, cumulativeTotal: 0, recordId, text, rating });
+        const entry = { id: 'note', label: 'Notatka', startedAt, duration: 0, cumulativeTotal: 0, recordId, text, rating };
+        if (trainingSeconds !== null) entry.trainingSeconds = trainingSeconds;
+        history.push(entry);
       } else if (id) {
         const cumulativeTotal = history.reduce((s, x) => s + x.duration, 0) + duration;
         const entry = { id, label, startedAt, duration, cumulativeTotal, recordId };
@@ -718,7 +728,7 @@ function _renderNotesList() {
   }
 
   notes.forEach((n) => {
-    const ts = n.trainingSeconds ?? 0;
+    const ts = n.trainingSeconds ?? getTrainingSecondsAt(n.startedAt);
     const m = Math.floor(ts / 60);
     const s = ts % 60;
     const trainingTime = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
@@ -853,6 +863,41 @@ function _fmtMs(ms) {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+function _buildActiveTimeline(entry) {
+  const start = Number(entry.startedAt);
+  const duration = Number(entry.duration);
+  const end = start + duration;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || duration <= 0) return [];
+
+  const coachingSegments = history
+    .filter((segment) => segment.id === COACHING_DURING_ID && segment.containsIn === entry.recordId)
+    .map((segment) => ({
+      start: Number(segment.startedAt),
+      end: Number(segment.startedAt) + Number(segment.duration),
+    }))
+    .filter((segment) => Number.isFinite(segment.start) && Number.isFinite(segment.end) && segment.end > segment.start)
+    .sort((a, b) => a.start - b.start);
+
+  const timeline = [];
+  let cursor = start;
+  coachingSegments.forEach((segment) => {
+    const segmentStart = Math.min(end, Math.max(cursor, start, segment.start));
+    const segmentEnd = Math.min(end, segment.end);
+    if (segmentStart > cursor) {
+      timeline.push({ label: 'Czas aktywny bez coachingu', color: _HIST_META.active.color, start: cursor, end: segmentStart });
+    }
+    if (segmentEnd > segmentStart) {
+      timeline.push({ label: 'Coaching w trakcie', color: _HIST_META.coaching.color, start: segmentStart, end: segmentEnd });
+    }
+    cursor = Math.max(cursor, segmentEnd);
+  });
+  if (cursor < end) {
+    timeline.push({ label: 'Czas aktywny bez coachingu', color: _HIST_META.active.color, start: cursor, end });
+  }
+
+  return timeline;
+}
+
 function _renderHistoryLegend() {
   _historyLegend.innerHTML = Object.entries(_HIST_META).map(([, m]) => `
     <span class="flex items-center gap-1.5 text-xs text-slate-400">
@@ -874,18 +919,27 @@ function _renderHistoryList() {
     const meta = _HIST_META[entry.id];
     if (!meta) return;
 
+    const canExpand = entry.id === 'active';
     const canSwap = entry.id === 'coaching' || entry.id === 'instructions';
     const swapTarget = entry.id === 'coaching' ? 'instructions' : 'coaching';
     const swapTargetMeta = _HIST_META[swapTarget];
 
     const row = document.createElement('div');
-    row.className = 'flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5';
+    row.className = `flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5${canExpand ? ' cursor-pointer hover:border-slate-500' : ''}`;
+    if (canExpand) {
+      row.setAttribute('role', 'button');
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('aria-expanded', 'false');
+      row.setAttribute('aria-label', `Czas aktywny ${_fmtMs(entry.duration)} — pokaż szczegóły`);
+      row.title = 'Pokaż czasy aktywne i coaching w trakcie';
+    }
 
     row.innerHTML = `
       <span class="w-3 h-3 rounded-sm flex-shrink-0" style="background:${meta.color}"></span>
       <span class="text-xs font-bold flex-shrink-0" style="color:${meta.color}">${meta.abbr}</span>
       <span class="text-xs text-slate-300 font-mono tabular-nums">${_fmtMs(entry.duration)}</span>
       <span class="text-[10px] text-slate-600 ml-auto">${new Date(entry.startedAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>
+      ${canExpand ? '<svg class="hist-expand-icon w-3.5 h-3.5 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>' : ''}
       ${canSwap ? `
         <button
           class="hist-swap flex-shrink-0 flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border border-slate-700 text-slate-400 transition-colors"
@@ -898,6 +952,56 @@ function _renderHistoryList() {
           ${swapTargetMeta.abbr}
         </button>` : ''}
     `;
+
+    if (canExpand) {
+        const details = document.createElement('div');
+        details.className = 'hidden ml-4 pl-3 border-l border-slate-700 space-y-1.5';
+        _buildActiveTimeline(entry).forEach((segment) => {
+          const item = document.createElement('div');
+          item.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 bg-slate-900/60 rounded-lg px-3 py-2';
+
+          const marker = document.createElement('span');
+          marker.className = 'w-2 h-2 rounded-sm flex-shrink-0';
+          marker.style.background = segment.color;
+
+          const label = document.createElement('span');
+          label.className = 'text-xs text-slate-300 flex-1';
+          label.textContent = segment.label;
+
+          const duration = document.createElement('span');
+          duration.className = 'text-xs text-slate-200 font-mono tabular-nums';
+          duration.textContent = _fmtMs(segment.end - segment.start);
+
+          const time = document.createElement('span');
+          time.className = 'w-full text-[10px] text-slate-500 font-mono pl-4';
+          const formatTime = (timestamp) => new Date(timestamp).toLocaleTimeString('pl-PL', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          time.textContent = `${formatTime(segment.start)}–${formatTime(segment.end)}`;
+
+          item.append(marker, label, duration, time);
+          details.append(item);
+        });
+
+        const toggleDetails = () => {
+          const expanded = row.getAttribute('aria-expanded') === 'true';
+          row.setAttribute('aria-expanded', String(!expanded));
+          details.classList.toggle('hidden', expanded);
+          row.querySelector('.hist-expand-icon').classList.toggle('rotate-180', !expanded);
+        };
+        row.addEventListener('click', toggleDetails);
+        row.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleDetails();
+          }
+        });
+        _historyList.appendChild(row);
+        _historyList.append(details);
+        return;
+    }
 
     if (canSwap) {
       row.querySelector('.hist-swap').addEventListener('click', () => {
