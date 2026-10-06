@@ -18,35 +18,60 @@ export const TIMER_LABELS = {
   motor:        'Motoryka',
   instructions: 'Tłumaczenie instrukcji',
   technique:    'Technika',
+  coachingDuring: 'Coaching w trakcie',
 };
 
-/** @type {Array<{id:string, label:string, startedAt:number, duration:number, cumulativeTotal:number}>} */
+/** @type {Array<{id:string, label:string, startedAt:number, duration:number, cumulativeTotal:number, recordId?:string, containsIn?:string}>} */
 export const history = [];
 
 const _LS_KEY = 'session-timer-history';
+
+let _recordIdCounter = 0;
+
+function _newRecordId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  _recordIdCounter += 1;
+  return `entry-${Date.now().toString(36)}-${_recordIdCounter.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createRecordId() {
+  return _newRecordId();
+}
 
 // Restore persisted history from localStorage on module init
 try {
   const stored = localStorage.getItem(_LS_KEY);
   if (stored) {
     const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed)) history.push(...parsed);
+    if (Array.isArray(parsed)) {
+      parsed.forEach((entry) => {
+        if (!entry.recordId) entry.recordId = _newRecordId();
+        history.push(entry);
+      });
+    }
   }
 } catch (_) {}
 
 // Wall-clock timestamp when each timer last started (null = not running)
-const _segmentStart = { dead: null, active: null, coaching: null, motor: null, instructions: null, technique: null };
+const _segmentStart = {};
 // Seconds value on the timer at the moment of last start (for precise duration calc)
-const _segmentStartSeconds = { dead: 0, active: 0, coaching: 0, motor: 0, instructions: 0, technique: 0 };
+const _segmentStartSeconds = {};
+const _segmentRecordId = {};
+const _segmentContainsIn = {};
 
 /**
  * Call when a timer starts.
  * @param {string} id
  * @param {number} seconds – current elapsed seconds on the timer at start time
  */
-export function recordStart(id, seconds) {
+export function recordStart(id, seconds, containsIn = null) {
   _segmentStart[id] = Date.now();
   _segmentStartSeconds[id] = seconds ?? 0;
+  _segmentRecordId[id] = _newRecordId();
+  _segmentContainsIn[id] = containsIn;
+  return _segmentRecordId[id];
 }
 
 /**
@@ -65,7 +90,11 @@ export function recordPause(id, currentSeconds) {
   // user sees. Wall-clock ms would accumulate fractional-second drift on each resume
   // because _wallStart is anchored to floored integer seconds.
   const duration = Math.max(0, (currentSeconds - _segmentStartSeconds[id]) * 1000);
-  if (duration === 0) return; // nothing elapsed — skip
+  if (duration === 0) {
+    delete _segmentRecordId[id];
+    delete _segmentContainsIn[id];
+    return; // nothing elapsed — skip
+  }
 
   const cumulativeTotal = history.reduce((sum, e) => sum + e.duration, 0) + duration;
 
@@ -75,17 +104,26 @@ export function recordPause(id, currentSeconds) {
     startedAt: started,
     duration,
     cumulativeTotal,
+    recordId: _segmentRecordId[id],
   };
+  if (_segmentContainsIn[id]) entry.containsIn = _segmentContainsIn[id];
 
   history.push(entry);
+  delete _segmentRecordId[id];
+  delete _segmentContainsIn[id];
   _saveHistory();
   _logHistory();
 }
 
 /** Removes all history entries for a given timer (on reset). */
 export function clearTimerHistory(id) {
-  const removed = history.splice(0, history.length, ...history.filter((e) => e.id !== id));
-  if (removed.length !== history.length) _logHistory();
+  const recordIds = new Set(
+    history.filter((entry) => entry.id === id && entry.recordId).map((entry) => entry.recordId)
+  );
+  const retained = history.filter((entry) => entry.id !== id && !recordIds.has(entry.containsIn));
+  const removedCount = history.length - retained.length;
+  history.splice(0, history.length, ...retained);
+  if (removedCount > 0) _logHistory();
   _saveHistory();
 }
 
@@ -121,6 +159,7 @@ export function recordNote(text, startedAt, trainingSeconds = 0) {
     startedAt,
     duration: 0,
     cumulativeTotal: 0,
+    recordId: _newRecordId(),
     text,
     trainingSeconds,
   };

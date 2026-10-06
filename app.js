@@ -87,6 +87,7 @@ if ('serviceWorker' in navigator) {
 
 import {
   TIMER_IDS,
+  COACHING_DURING_ID,
   setOnTick,
   setOnStateChange,
   toggleTimer,
@@ -100,16 +101,35 @@ import {
   confirmReset,
   displayToSeconds,
   secondsToDisplay,
+  updateCoachingDuringControl,
 } from './ui.js';
 
-import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS } from './history.js';
+import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS, createRecordId } from './history.js';
 import { renderStats } from './stats.js';
 import { closeSettings } from './settings.js';
 
 // ── State change → history ─────────────────────────────────────────────────────
+let _activeRecordId = null;
+
 setOnStateChange((id, event, seconds) => {
-  if (event === 'start') recordStart(id, seconds);
-  if (event === 'pause') recordPause(id, seconds);
+  if (event === 'start') {
+    const containsIn = id === COACHING_DURING_ID ? _activeRecordId : null;
+    const recordId = recordStart(id, seconds, containsIn);
+    if (id === 'active') _activeRecordId = recordId;
+  }
+  if (event === 'pause') {
+    recordPause(id, seconds);
+    if (id === 'active') {
+      _activeRecordId = null;
+    }
+  }
+
+  const coachingDuring = getTimerState(COACHING_DURING_ID);
+  updateCoachingDuringControl(
+    coachingDuring.seconds,
+    coachingDuring.running,
+    getTimerState('active').running
+  );
 });
 
 // ── Total time display ───────────────────────────────────────────────────────
@@ -134,13 +154,25 @@ TIMER_IDS.forEach((id) => {
   const { seconds, running } = getTimerState(id);
   updateCard(id, seconds, running);
 });
+const coachingDuringSaved = _lsSeconds[COACHING_DURING_ID];
+if (coachingDuringSaved > 0) setTimerSeconds(COACHING_DURING_ID, coachingDuringSaved);
+const coachingDuringState = getTimerState(COACHING_DURING_ID);
+updateCoachingDuringControl(
+  coachingDuringState.seconds,
+  coachingDuringState.running,
+  getTimerState('active').running
+);
 updateTotalTime();
 
 // ── Tick callback ─────────────────────────────────────────────────────────────
 
 setOnTick((id, seconds) => {
   const { running } = getTimerState(id);
-  updateCard(id, seconds, running);
+  if (id === COACHING_DURING_ID) {
+    updateCoachingDuringControl(seconds, running, getTimerState('active').running);
+  } else {
+    updateCard(id, seconds, running);
+  }
   updateTotalTime();
 });
 
@@ -150,6 +182,17 @@ document.getElementById('timers-container').addEventListener('click', async (e) 
   const card = e.target.closest('[data-timer-id]');
   if (!card) return;
   const id = card.dataset.timerId;
+
+  if (e.target.closest('.coaching-during-toggle')) {
+    toggleTimer(COACHING_DURING_ID);
+    const coachingDuring = getTimerState(COACHING_DURING_ID);
+    updateCoachingDuringControl(
+      coachingDuring.seconds,
+      coachingDuring.running,
+      getTimerState('active').running
+    );
+    return;
+  }
 
   if (e.target.closest('.timer-toggle')) {
     toggleTimer(id);
@@ -162,6 +205,7 @@ document.getElementById('timers-container').addEventListener('click', async (e) 
     const confirmed = await confirmReset();
     if (confirmed) {
       resetTimer(id);
+      if (id === 'active') resetTimer(COACHING_DURING_ID);
       clearTimerHistory(id);
       updateCard(id, 0, false);
       updateTotalTime();
@@ -264,9 +308,10 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
     resetTimer(id);
     updateCard(id, 0, false);
   });
+  resetTimer(COACHING_DURING_ID);
   clearAllHistory();
 
-  const visibility = {};
+  const visibility = _loadVisibility();
   TIMER_IDS.forEach((id) => {
     const visible = selectedTimerIds.has(id);
     visibility[id] = visible;
@@ -346,7 +391,7 @@ function _buildExportFilename(custom) {
 }
 
 function _doExportCSV(filename) {
-  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz']];
+  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz', 'ID wpisu', 'Zawiera się w']];
   history.forEach((entry, i) => {
     const startLocal = new Date(entry.startedAt).toLocaleString('pl-PL');
     rows.push([
@@ -357,6 +402,8 @@ function _doExportCSV(filename) {
       entry.text != null
         ? `${{ like: '1', dislike: '-1' }[entry.rating] ?? '0'}*${entry.text}`
         : '',
+      entry.recordId ?? '',
+      entry.containsIn ?? '',
     ]);
   });
   const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -430,6 +477,7 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
 
     // Wipe any existing in-memory + localStorage history and reset all timer states
     TIMER_IDS.forEach((id) => { resetTimer(id); updateCard(id, 0, false); });
+    resetTimer(COACHING_DURING_ID);
     clearAllHistory();
 
     // Build label→id map from TIMER_LABELS
@@ -464,6 +512,8 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       const label    = cols[1]?.trim() ?? '';
       const duration = parseInt(cols[3] ?? '0', 10) * durationScale;
       const comment  = cols[4]?.trim() ?? '';
+      const recordId = cols[5]?.trim() || createRecordId();
+      const containsIn = cols[6]?.trim() || null;
 
       // Parse the actual start time from the CSV — fall back to sequential offset only when unparseable
       const startedAt = parsePlDate(cols[2] ?? '') ?? (Date.now() - (lines.length - i) * 1000);
@@ -480,10 +530,12 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
           rating = prefixMatch[1] === '1' ? 'like' : prefixMatch[1] === '-1' ? 'dislike' : null;
           text = prefixMatch[2];
         }
-        history.push({ id: 'note', label: 'Notatka', startedAt, duration: 0, cumulativeTotal: 0, text, rating });
+        history.push({ id: 'note', label: 'Notatka', startedAt, duration: 0, cumulativeTotal: 0, recordId, text, rating });
       } else if (id) {
         const cumulativeTotal = history.reduce((s, x) => s + x.duration, 0) + duration;
-        history.push({ id, label, startedAt, duration, cumulativeTotal });
+        const entry = { id, label, startedAt, duration, cumulativeTotal, recordId };
+        if (containsIn) entry.containsIn = containsIn;
+        history.push(entry);
         timerTotalsMs[id] = (timerTotalsMs[id] ?? 0) + duration;
       }
       imported++;
@@ -498,6 +550,9 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
         setTimerSeconds(id, totalSec);
         updateCard(id, totalSec, false);
       });
+      const coachingDuringSeconds = Math.floor((timerTotalsMs[COACHING_DURING_ID] ?? 0) / 1000);
+      setTimerSeconds(COACHING_DURING_ID, coachingDuringSeconds);
+      updateCoachingDuringControl(coachingDuringSeconds, false, false);
       updateTotalTime();
 
       setView('stats');
@@ -749,6 +804,11 @@ function _loadVisibility() {
 }
 
 function _applyVisibility(id, visible) {
+  const targets = document.querySelectorAll(`[data-timer-visibility-id="${id}"]`);
+  if (targets.length > 0) {
+    targets.forEach((target) => target.classList.toggle('hidden', !visible));
+    return;
+  }
   const card = document.querySelector(`[data-timer-id="${id}"]`);
   if (card) card.classList.toggle('hidden', !visible);
 }

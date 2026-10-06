@@ -29,7 +29,6 @@ export function displayToSeconds(value) {
  * - display value
  * - active ring / indicator dot
  * - play/pause icons and label
- * - status badge
  *
  * @param {string} id
  * @param {number} seconds
@@ -62,32 +61,41 @@ export function updateCard(id, seconds, running) {
     card.classList.remove('active');
   }
 
-  // Play/Pause icons
+  // Play/Pause icons and accessible action label
   const iconPlay = card.querySelector('.icon-play');
   const iconPause = card.querySelector('.icon-pause');
-  const toggleLabel = card.querySelector('.toggle-label');
+  const toggleButton = card.querySelector('.timer-toggle');
+  const actionLabel = running ? 'Pauza' : seconds > 0 ? 'Wznów' : 'Start';
 
   if (running) {
     iconPlay.classList.add('hidden');
     iconPause.classList.remove('hidden');
-    toggleLabel.textContent = 'Pauza';
   } else {
     iconPlay.classList.remove('hidden');
     iconPause.classList.add('hidden');
-    toggleLabel.textContent = seconds > 0 ? 'Wznów' : 'Start';
   }
+  toggleButton.setAttribute('aria-label', actionLabel);
+  toggleButton.title = actionLabel;
 
-  // Status badge
-  const badge = card.querySelector('.timer-status-badge');
-  if (running) {
-    badge.textContent = 'Aktywny';
-    badge.classList.remove('bg-slate-700', 'text-slate-400');
-    badge.classList.add('bg-emerald-900/60', 'text-emerald-400');
-  } else {
-    badge.textContent = seconds > 0 ? 'Wstrzymany' : 'Zatrzymany';
-    badge.classList.add('bg-slate-700', 'text-slate-400');
-    badge.classList.remove('bg-emerald-900/60', 'text-emerald-400');
-  }
+}
+
+export function updateCoachingDuringControl(seconds, running, activeRunning) {
+  const button = document.getElementById('coaching-during-toggle');
+  const display = document.getElementById('coaching-during-display');
+  if (!button || !display) return;
+
+  display.textContent = secondsToDisplay(seconds);
+  button.disabled = !activeRunning && !running;
+  button.setAttribute('aria-pressed', String(running));
+  const actionLabel = running ? 'Pauza' : 'Start';
+  button.setAttribute('aria-label', `Coaching w trakcie — ${actionLabel}`);
+  button.title = `Coaching w trakcie — ${actionLabel}`;
+  button.classList.toggle('bg-amber-500/20', running);
+  button.classList.toggle('text-amber-300', running);
+  button.classList.toggle('bg-slate-700', !running);
+  button.classList.toggle('text-slate-400', !running);
+  button.classList.toggle('opacity-50', button.disabled);
+  button.classList.toggle('cursor-not-allowed', button.disabled);
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────

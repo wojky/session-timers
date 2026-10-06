@@ -5,6 +5,8 @@
  */
 
 export const TIMER_IDS = ['active', 'dead', 'coaching', 'instructions', 'motor', 'technique'];
+export const COACHING_DURING_ID = 'coachingDuring';
+const STATE_IDS = [...TIMER_IDS, COACHING_DURING_ID];
 
 /**
  * @typedef {Object} TimerState
@@ -36,13 +38,13 @@ function _loadSeconds() {
 function _saveSeconds() {
   try {
     const data = {};
-    TIMER_IDS.forEach((id) => { data[id] = Math.floor(state[id].ms / 1000); });
+    STATE_IDS.forEach((id) => { data[id] = Math.floor(state[id].ms / 1000); });
     localStorage.setItem(_LS_SECONDS_KEY, JSON.stringify(data));
   } catch (_) {}
 }
 
 const _saved = _loadSeconds();
-TIMER_IDS.forEach((id) => {
+STATE_IDS.forEach((id) => {
   // Persist/restore at second granularity; internally track ms for precision
   state[id] = { ms: (_saved[id] ?? 0) * 1000, running: false, intervalId: null };
 });
@@ -74,9 +76,13 @@ export function getRunningId() {
 
 /** Starts the given timer. If another is running, pauses it first. */
 export function startTimer(id) {
-  const running = getRunningId();
-  if (running && running !== id) {
-    pauseTimer(running);
+  if (id === COACHING_DURING_ID) {
+    if (!state.active.running) return;
+  } else {
+    const running = getRunningId();
+    if (running && running !== id) {
+      pauseTimer(running);
+    }
   }
   if (state[id].running) return;
 
@@ -101,6 +107,9 @@ export function pauseTimer(id) {
   state[id].running = false;
   _saveSeconds();
   onStateChange?.(id, 'pause', Math.floor(state[id].ms / 1000));
+  if (id === 'active' && state[COACHING_DURING_ID].running) {
+    pauseTimer(COACHING_DURING_ID);
+  }
   onTick?.(id, Math.floor(state[id].ms / 1000));
 }
 
