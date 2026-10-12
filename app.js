@@ -87,7 +87,9 @@ if ('serviceWorker' in navigator) {
 
 import {
   TIMER_IDS,
-  COACHING_DURING_ID,
+  COACHING_DURING_IDS,
+  COACHING_DURING_PARENT_IDS,
+  COACHING_DURING_TIMER_IDS,
   setOnTick,
   setOnStateChange,
   toggleTimer,
@@ -109,27 +111,25 @@ import { renderStats } from './stats.js';
 import { closeSettings } from './settings.js';
 
 // ── State change → history ─────────────────────────────────────────────────────
-let _activeRecordId = null;
+const _timerRecordIds = {};
 
 setOnStateChange((id, event, seconds) => {
   if (event === 'start') {
-    const containsIn = id === COACHING_DURING_ID ? _activeRecordId : null;
+    const parentId = COACHING_DURING_PARENT_IDS[id];
+    const containsIn = parentId ? _timerRecordIds[parentId] : null;
     const recordId = recordStart(id, seconds, containsIn);
-    if (id === 'active') _activeRecordId = recordId;
+    if (TIMER_IDS.includes(id)) _timerRecordIds[id] = recordId;
   }
   if (event === 'pause') {
     recordPause(id, seconds);
-    if (id === 'active') {
-      _activeRecordId = null;
-    }
+    if (TIMER_IDS.includes(id)) delete _timerRecordIds[id];
   }
 
-  const coachingDuring = getTimerState(COACHING_DURING_ID);
-  updateCoachingDuringControl(
-    coachingDuring.seconds,
-    coachingDuring.running,
-    getTimerState('active').running
-  );
+  COACHING_DURING_TIMER_IDS.forEach((coachingId) => {
+    const parentId = COACHING_DURING_PARENT_IDS[coachingId];
+    const coaching = getTimerState(coachingId);
+    updateCoachingDuringControl(coachingId, coaching.seconds, coaching.running, getTimerState(parentId).running);
+  });
 });
 
 // ── Total time display ───────────────────────────────────────────────────────
@@ -154,22 +154,22 @@ TIMER_IDS.forEach((id) => {
   const { seconds, running } = getTimerState(id);
   updateCard(id, seconds, running);
 });
-const coachingDuringSaved = _lsSeconds[COACHING_DURING_ID];
-if (coachingDuringSaved > 0) setTimerSeconds(COACHING_DURING_ID, coachingDuringSaved);
-const coachingDuringState = getTimerState(COACHING_DURING_ID);
-updateCoachingDuringControl(
-  coachingDuringState.seconds,
-  coachingDuringState.running,
-  getTimerState('active').running
-);
+COACHING_DURING_TIMER_IDS.forEach((id) => {
+  const saved = _lsSeconds[id];
+  if (saved > 0) setTimerSeconds(id, saved);
+  const parentId = COACHING_DURING_PARENT_IDS[id];
+  const coaching = getTimerState(id);
+  updateCoachingDuringControl(id, coaching.seconds, coaching.running, getTimerState(parentId).running);
+});
 updateTotalTime();
 
 // ── Tick callback ─────────────────────────────────────────────────────────────
 
 setOnTick((id, seconds) => {
   const { running } = getTimerState(id);
-  if (id === COACHING_DURING_ID) {
-    updateCoachingDuringControl(seconds, running, getTimerState('active').running);
+  if (COACHING_DURING_TIMER_IDS.includes(id)) {
+    const parentId = COACHING_DURING_PARENT_IDS[id];
+    updateCoachingDuringControl(id, seconds, running, getTimerState(parentId).running);
   } else {
     updateCard(id, seconds, running);
   }
@@ -183,14 +183,13 @@ document.getElementById('timers-container').addEventListener('click', async (e) 
   if (!card) return;
   const id = card.dataset.timerId;
 
-  if (e.target.closest('.coaching-during-toggle')) {
-    toggleTimer(COACHING_DURING_ID);
-    const coachingDuring = getTimerState(COACHING_DURING_ID);
-    updateCoachingDuringControl(
-      coachingDuring.seconds,
-      coachingDuring.running,
-      getTimerState('active').running
-    );
+  const coachingButton = e.target.closest('.coaching-during-toggle');
+  if (coachingButton) {
+    const coachingId = coachingButton.dataset.coachingDuringToggle;
+    toggleTimer(coachingId);
+    const parentId = COACHING_DURING_PARENT_IDS[coachingId];
+    const coaching = getTimerState(coachingId);
+    updateCoachingDuringControl(coachingId, coaching.seconds, coaching.running, getTimerState(parentId).running);
     return;
   }
 
@@ -205,7 +204,8 @@ document.getElementById('timers-container').addEventListener('click', async (e) 
     const confirmed = await confirmReset();
     if (confirmed) {
       resetTimer(id);
-      if (id === 'active') resetTimer(COACHING_DURING_ID);
+      const coachingId = COACHING_DURING_IDS[id];
+      if (coachingId) resetTimer(coachingId);
       clearTimerHistory(id);
       updateCard(id, 0, false);
       updateTotalTime();
@@ -308,12 +308,15 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
     resetTimer(id);
     updateCard(id, 0, false);
   });
-  resetTimer(COACHING_DURING_ID);
+  COACHING_DURING_TIMER_IDS.forEach(resetTimer);
   clearAllHistory();
 
   const visibility = _loadVisibility();
-  TIMER_IDS.forEach((id) => {
-    const visible = selectedTimerIds.has(id);
+  [...TIMER_IDS, ...COACHING_DURING_TIMER_IDS].forEach((id) => {
+    const parentId = COACHING_DURING_PARENT_IDS[id];
+    const visible = parentId
+      ? selectedTimerIds.has(parentId) && visibility[id] !== false
+      : selectedTimerIds.has(id);
     visibility[id] = visible;
     const checkbox = document.querySelector(`.timer-visibility-toggle[data-target-timer="${id}"]`);
     if (checkbox) checkbox.checked = visible;
@@ -480,7 +483,7 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
 
     // Wipe any existing in-memory + localStorage history and reset all timer states
     TIMER_IDS.forEach((id) => { resetTimer(id); updateCard(id, 0, false); });
-    resetTimer(COACHING_DURING_ID);
+    COACHING_DURING_TIMER_IDS.forEach(resetTimer);
     clearAllHistory();
 
     // Build label→id map from TIMER_LABELS
@@ -508,6 +511,7 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
     let imported = 0;
     const timerTotalsMs = {};
     TIMER_IDS.forEach((id) => { timerTotalsMs[id] = 0; });
+    COACHING_DURING_TIMER_IDS.forEach((id) => { timerTotalsMs[id] = 0; });
 
     for (let i = 1; i < lines.length; i++) {
       const cols = parseRow(lines[i]);
@@ -560,9 +564,12 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
         setTimerSeconds(id, totalSec);
         updateCard(id, totalSec, false);
       });
-      const coachingDuringSeconds = Math.floor((timerTotalsMs[COACHING_DURING_ID] ?? 0) / 1000);
-      setTimerSeconds(COACHING_DURING_ID, coachingDuringSeconds);
-      updateCoachingDuringControl(coachingDuringSeconds, false, false);
+      COACHING_DURING_TIMER_IDS.forEach((id) => {
+        const seconds = Math.floor((timerTotalsMs[id] ?? 0) / 1000);
+        setTimerSeconds(id, seconds);
+        const parentId = COACHING_DURING_PARENT_IDS[id];
+        updateCoachingDuringControl(id, seconds, false, getTimerState(parentId).running);
+      });
       updateTotalTime();
 
       setView('stats');
@@ -842,6 +849,22 @@ document.querySelectorAll('.timer-visibility-toggle').forEach((checkbox) => {
   });
 });
 
+document.querySelectorAll('[data-visibility-preset]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const showAll = button.dataset.visibilityPreset === 'all';
+    const visibility = _loadVisibility();
+    [...TIMER_IDS, ...COACHING_DURING_TIMER_IDS].forEach((id) => {
+      const parentId = COACHING_DURING_PARENT_IDS[id];
+      const visible = showAll || !['motor', 'technique'].includes(parentId ?? id);
+      visibility[id] = visible;
+      const checkbox = document.querySelector(`.timer-visibility-toggle[data-target-timer="${id}"]`);
+      if (checkbox) checkbox.checked = visible;
+      _applyVisibility(id, visible);
+    });
+    localStorage.setItem(_LS_VISIBILITY_KEY, JSON.stringify(visibility));
+  });
+});
+
 // ── History dialog ────────────────────────────────────────────────────────────
 
 const _historyDialog      = document.getElementById('history-dialog');
@@ -856,6 +879,9 @@ const _HIST_META = {
   instructions: { abbr: 'TI', color: '#34d399', label: 'Tłumaczenie instrukcji' },
   motor:        { abbr: 'MO', color: '#e879f9', label: 'Motoryka' },
   technique:    { abbr: 'TE', color: '#a3e635', label: 'Technika' },
+  coachingDuring:          { abbr: 'CW', color: '#fbbf24', label: TIMER_LABELS.coachingDuring },
+  coachingDuringMotor:     { abbr: 'CM', color: '#fbbf24', label: TIMER_LABELS.coachingDuringMotor },
+  coachingDuringTechnique: { abbr: 'CT', color: '#fbbf24', label: TIMER_LABELS.coachingDuringTechnique },
 };
 
 function _fmtMs(ms) {
@@ -869,8 +895,12 @@ function _buildActiveTimeline(entry) {
   const end = start + duration;
   if (!Number.isFinite(start) || !Number.isFinite(end) || duration <= 0) return [];
 
+  const coachingId = COACHING_DURING_IDS[entry.id];
+  if (!coachingId) return [];
+  const timerLabel = TIMER_LABELS[entry.id] ?? entry.label;
+  const coachingLabel = TIMER_LABELS[coachingId];
   const coachingSegments = history
-    .filter((segment) => segment.id === COACHING_DURING_ID && segment.containsIn === entry.recordId)
+    .filter((segment) => segment.id === coachingId && segment.containsIn === entry.recordId)
     .map((segment) => ({
       start: Number(segment.startedAt),
       end: Number(segment.startedAt) + Number(segment.duration),
@@ -884,15 +914,15 @@ function _buildActiveTimeline(entry) {
     const segmentStart = Math.min(end, Math.max(cursor, start, segment.start));
     const segmentEnd = Math.min(end, segment.end);
     if (segmentStart > cursor) {
-      timeline.push({ label: 'Czas aktywny bez coachingu', color: _HIST_META.active.color, start: cursor, end: segmentStart });
+      timeline.push({ label: `${timerLabel} bez coachingu`, color: _HIST_META[entry.id]?.color ?? _HIST_META.active.color, start: cursor, end: segmentStart });
     }
     if (segmentEnd > segmentStart) {
-      timeline.push({ label: 'Coaching w trakcie', color: _HIST_META.coaching.color, start: segmentStart, end: segmentEnd });
+      timeline.push({ label: coachingLabel, color: _HIST_META.coaching.color, start: segmentStart, end: segmentEnd });
     }
     cursor = Math.max(cursor, segmentEnd);
   });
   if (cursor < end) {
-    timeline.push({ label: 'Czas aktywny bez coachingu', color: _HIST_META.active.color, start: cursor, end });
+    timeline.push({ label: `${timerLabel} bez coachingu`, color: _HIST_META[entry.id]?.color ?? _HIST_META.active.color, start: cursor, end });
   }
 
   return timeline;
@@ -919,7 +949,7 @@ function _renderHistoryList() {
     const meta = _HIST_META[entry.id];
     if (!meta) return;
 
-    const canExpand = entry.id === 'active';
+    const canExpand = Boolean(COACHING_DURING_IDS[entry.id]);
     const canSwap = entry.id === 'coaching' || entry.id === 'instructions';
     const swapTarget = entry.id === 'coaching' ? 'instructions' : 'coaching';
     const swapTargetMeta = _HIST_META[swapTarget];
@@ -930,8 +960,8 @@ function _renderHistoryList() {
       row.setAttribute('role', 'button');
       row.setAttribute('tabindex', '0');
       row.setAttribute('aria-expanded', 'false');
-      row.setAttribute('aria-label', `Czas aktywny ${_fmtMs(entry.duration)} — pokaż szczegóły`);
-      row.title = 'Pokaż czasy aktywne i coaching w trakcie';
+      row.setAttribute('aria-label', `${TIMER_LABELS[entry.id]} ${_fmtMs(entry.duration)} — pokaż szczegóły`);
+      row.title = `Pokaż szczegóły: ${TIMER_LABELS[entry.id]} i coaching w trakcie`;
     }
 
     row.innerHTML = `

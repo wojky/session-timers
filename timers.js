@@ -6,7 +6,16 @@
 
 export const TIMER_IDS = ['active', 'dead', 'coaching', 'instructions', 'motor', 'technique'];
 export const COACHING_DURING_ID = 'coachingDuring';
-const STATE_IDS = [...TIMER_IDS, COACHING_DURING_ID];
+export const COACHING_DURING_IDS = {
+  active: COACHING_DURING_ID,
+  motor: 'coachingDuringMotor',
+  technique: 'coachingDuringTechnique',
+};
+export const COACHING_DURING_TIMER_IDS = Object.values(COACHING_DURING_IDS);
+export const COACHING_DURING_PARENT_IDS = Object.fromEntries(
+  Object.entries(COACHING_DURING_IDS).map(([parentId, id]) => [id, parentId])
+);
+const STATE_IDS = [...TIMER_IDS, ...COACHING_DURING_TIMER_IDS];
 
 /**
  * @typedef {Object} TimerState
@@ -76,8 +85,9 @@ export function getRunningId() {
 
 /** Starts the given timer. If another is running, pauses it first. */
 export function startTimer(id) {
-  if (id === COACHING_DURING_ID) {
-    if (!state.active.running) return;
+  const parentId = COACHING_DURING_PARENT_IDS[id];
+  if (parentId) {
+    if (!state[parentId].running) return;
   } else {
     const running = getRunningId();
     if (running && running !== id) {
@@ -107,8 +117,9 @@ export function pauseTimer(id) {
   state[id].running = false;
   _saveSeconds();
   onStateChange?.(id, 'pause', Math.floor(state[id].ms / 1000));
-  if (id === 'active' && state[COACHING_DURING_ID].running) {
-    pauseTimer(COACHING_DURING_ID);
+  const coachingDuringId = COACHING_DURING_IDS[id];
+  if (coachingDuringId && state[coachingDuringId].running) {
+    pauseTimer(coachingDuringId);
   }
   onTick?.(id, Math.floor(state[id].ms / 1000));
 }

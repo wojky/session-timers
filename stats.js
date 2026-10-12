@@ -4,7 +4,7 @@
  */
 
 import { history, TIMER_LABELS } from './history.js';
-import { TIMER_IDS } from './timers.js';
+import { TIMER_IDS, COACHING_DURING_TIMER_IDS, getTimerState } from './timers.js';
 
 /** Short abbreviations shown on the radar chart axes */
 export const TIMER_ABBR = {
@@ -435,9 +435,20 @@ function _renderKPI(stats, grandTotal) {
   const active       = stats.find(s => s.id === 'active');
   const instructions = stats.find(s => s.id === 'instructions');
   const coaching     = stats.find(s => s.id === 'coaching');
+  const coachingDuringTotal = COACHING_DURING_TIMER_IDS
+    .reduce((sum, id) => sum + getTimerState(id).ms, 0);
+  const coachingSessionTotal = coachingDuringTotal + getTimerState('coaching').ms;
+  const trainingTimeTotal = TIMER_IDS
+    .reduce((sum, id) => sum + getTimerState(id).ms, 0);
 
   const deadPct    = grandTotal > 0 ? Math.round((dead.total / grandTotal) * 100)         : 0;
   const activePct  = grandTotal > 0 ? Math.round((active.total / grandTotal) * 100)       : 0;
+  const formatTrainingShare = (duration) => trainingTimeTotal > 0
+    ? ((duration / trainingTimeTotal) * 100).toLocaleString('pl-PL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })
+    : '0,0';
   const instrRatio = active?.total > 0 ? (instructions.total / active.total).toFixed(2)  : '\u2014';
   const coachRatio = active?.total > 0 ? (coaching.total / active.total).toFixed(2)      : '\u2014';
 
@@ -452,6 +463,10 @@ function _renderKPI(stats, grandTotal) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val); };
   set('kpi-dead-pct',       `${deadPct}%`);
   set('kpi-active-pct',     `${activePct}%`);
+  set('kpi-coaching-during-time', fmt(coachingDuringTotal));
+  set('kpi-coaching-during-pct', `${formatTrainingShare(coachingDuringTotal)}%`);
+  set('kpi-coaching-session-time', fmt(coachingSessionTotal));
+  set('kpi-coaching-session-pct', `${formatTrainingShare(coachingSessionTotal)}%`);
   set('kpi-instr-ratio',    instrRatio);
   set('kpi-coach-ratio',    coachRatio);
   set('kpi-changes',        changes);

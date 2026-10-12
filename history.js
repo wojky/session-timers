@@ -20,7 +20,9 @@ export const TIMER_LABELS = {
   motor:        'Motoryka',
   instructions: 'Tłumaczenie instrukcji',
   technique:    'Technika',
-  coachingDuring: 'Coaching w trakcie',
+  coachingDuring: 'Coaching w trakcie — Czas aktywny',
+  coachingDuringMotor: 'Coaching w trakcie — Motoryka',
+  coachingDuringTechnique: 'Coaching w trakcie — Technika',
 };
 
 /** @type {Array<{id:string, label:string, startedAt:number, duration:number, cumulativeTotal:number, recordId?:string, containsIn?:string}>} */

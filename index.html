@@ -121,14 +121,35 @@
 
         <hr class="border-slate-700" />
 
-        <!-- Sekcja 2: Widoczność liczników -->
+        <!-- Sekcja 2: Wybór widocznych timerów -->
         <div>
           <p
             class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3"
           >
-            Widoczność liczników
+            Widoczne timery
           </p>
-          <div class="flex flex-col gap-2">
+          <p class="text-xs text-slate-500 mb-3">
+            Wybierz, które liczniki mają być widoczne podczas treningu.
+          </p>
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <button
+              type="button"
+              data-visibility-preset="all"
+              class="rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-xs font-medium text-slate-300 hover:border-indigo-500 hover:text-indigo-300 transition-colors"
+            >
+              Wszystkie timery
+            </button>
+            <button
+              type="button"
+              data-visibility-preset="basic"
+              title="Ukrywa liczniki motoryki i techniki"
+              class="rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-xs font-medium text-slate-300 hover:border-indigo-500 hover:text-indigo-300 transition-colors"
+            >
+              Podstawowe
+            </button>
+          </div>
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Czasy treningu</p>
+          <div class="flex flex-col gap-1">
             <label
               class="flex items-center justify-between cursor-pointer py-1"
             >
@@ -151,7 +172,7 @@
             <label
               class="flex items-center justify-between cursor-pointer py-1"
             >
-              <span class="text-sm text-slate-300">Coaching w trakcie</span>
+              <span class="text-sm text-slate-300 pl-3">Coaching podczas czasu aktywnego</span>
               <input
                 type="checkbox"
                 class="timer-visibility-toggle sr-only"
@@ -167,6 +188,7 @@
                 ></div>
               </div>
             </label>
+            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-3 mb-1">Kategorie treningu</p>
             <label
               class="flex items-center justify-between cursor-pointer py-1"
             >
@@ -243,6 +265,13 @@
                 ></div>
               </div>
             </label>
+            <label class="flex items-center justify-between cursor-pointer py-1">
+              <span class="text-sm text-slate-300 pl-3">Coaching podczas motoryki</span>
+              <input type="checkbox" class="timer-visibility-toggle sr-only" data-target-timer="coachingDuringMotor" checked />
+              <div class="visibility-switch w-9 h-5 bg-indigo-600 rounded-full relative transition-colors" aria-hidden="true">
+                <div class="switch-dot absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </label>
             <label
               class="flex items-center justify-between cursor-pointer py-1"
             >
@@ -260,6 +289,13 @@
                 <div
                   class="switch-dot absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"
                 ></div>
+              </div>
+            </label>
+            <label class="flex items-center justify-between cursor-pointer py-1">
+              <span class="text-sm text-slate-300 pl-3">Coaching podczas techniki</span>
+              <input type="checkbox" class="timer-visibility-toggle sr-only" data-target-timer="coachingDuringTechnique" checked />
+              <div class="visibility-switch w-9 h-5 bg-indigo-600 rounded-full relative transition-colors" aria-hidden="true">
+                <div class="switch-dot absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"></div>
               </div>
             </label>
           </div>
@@ -534,6 +570,7 @@
               <span class="text-[10px] text-amber-300">Coaching w trakcie</span>
               <span
                 id="coaching-during-display"
+                data-coaching-during-display="coachingDuring"
                 class="text-[10px] font-mono tabular-nums text-slate-400"
                 aria-live="off"
                 >00:00</span
@@ -580,6 +617,8 @@
           >
             <button
               id="coaching-during-toggle"
+              data-coaching-during-toggle="coachingDuring"
+              data-coaching-during-label="Coaching podczas czasu aktywnego"
               type="button"
               class="coaching-during-toggle flex items-center justify-center w-12 h-12 rounded-xl bg-slate-700 text-slate-400 hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Coaching w trakcie — Start"
@@ -823,6 +862,10 @@
               class="text-xs font-semibold uppercase tracking-wider text-slate-400"
               >Motoryka</span
             >
+            <div data-timer-visibility-id="coachingDuringMotor" class="flex items-center gap-1 ml-1">
+              <span class="text-[10px] text-amber-300">Coaching</span>
+              <span data-coaching-during-display="coachingDuringMotor" class="text-[10px] font-mono tabular-nums text-slate-400" aria-live="off">00:00</span>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <div
@@ -858,6 +901,23 @@
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
             </svg>
           </button>
+          <div data-timer-visibility-id="coachingDuringMotor" class="flex-shrink-0">
+            <button
+              type="button"
+              data-coaching-during-toggle="coachingDuringMotor"
+              data-coaching-during-label="Coaching podczas motoryki"
+              class="coaching-during-toggle flex items-center justify-center w-12 h-12 rounded-xl bg-slate-700 text-slate-400 hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Coaching podczas motoryki — Start"
+              title="Coaching podczas motoryki — Start"
+              aria-pressed="false"
+              disabled
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5Z" />
+                <path d="M8 10h.01M12 10h.01M16 10h.01" />
+              </svg>
+            </button>
+          </div>
           <button
             class="timer-reset ml-2 p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
             aria-label="Resetuj"
@@ -887,6 +947,10 @@
               class="text-xs font-semibold uppercase tracking-wider text-slate-400"
               >Technika</span
             >
+            <div data-timer-visibility-id="coachingDuringTechnique" class="flex items-center gap-1 ml-1">
+              <span class="text-[10px] text-amber-300">Coaching</span>
+              <span data-coaching-during-display="coachingDuringTechnique" class="text-[10px] font-mono tabular-nums text-slate-400" aria-live="off">00:00</span>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <div
@@ -922,6 +986,23 @@
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
             </svg>
           </button>
+          <div data-timer-visibility-id="coachingDuringTechnique" class="flex-shrink-0">
+            <button
+              type="button"
+              data-coaching-during-toggle="coachingDuringTechnique"
+              data-coaching-during-label="Coaching podczas techniki"
+              class="coaching-during-toggle flex items-center justify-center w-12 h-12 rounded-xl bg-slate-700 text-slate-400 hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Coaching podczas techniki — Start"
+              title="Coaching podczas techniki — Start"
+              aria-pressed="false"
+              disabled
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5Z" />
+                <path d="M8 10h.01M12 10h.01M16 10h.01" />
+              </svg>
+            </button>
+          </div>
           <button
             class="timer-reset ml-2 p-2.5 rounded-xl border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
             aria-label="Resetuj"
@@ -1181,6 +1262,60 @@
             >
               —
             </p>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                Coaching w trakcie
+              </p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button"
+                >?</button>
+                <div class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl">
+                  Suma coachingu podczas czasu aktywnego, motoryki i techniki oraz jej udział w całym treningu.
+                </div>
+              </div>
+            </div>
+            <div class="mt-0.5">
+              <p
+                id="kpi-coaching-during-time"
+                class="text-2xl font-bold text-slate-100 tabular-nums"
+              >
+                —
+              </p>
+              <p class="text-sm font-medium text-slate-400">
+                <span id="kpi-coaching-during-pct" class="tabular-nums">—</span> całości
+              </p>
+            </div>
+          </div>
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700">
+            <div class="flex items-center gap-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                Coaching w sesji
+              </p>
+              <div class="relative group ml-auto flex-shrink-0">
+                <button
+                  class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-700 text-slate-400 text-[9px] font-bold focus:outline-none"
+                  type="button"
+                >?</button>
+                <div class="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-lg bg-slate-900 border border-slate-600 p-2.5 text-xs text-slate-300 leading-snug opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 shadow-xl">
+                  Suma licznika coachingu i coachingu w trakcie czasu aktywnego, motoryki oraz techniki, wraz z udziałem w całym treningu.
+                </div>
+              </div>
+            </div>
+            <div class="mt-0.5">
+              <p
+                id="kpi-coaching-session-time"
+                class="text-2xl font-bold text-slate-100 tabular-nums"
+              >
+                —
+              </p>
+              <p class="text-sm font-medium text-slate-400">
+                <span id="kpi-coaching-session-pct" class="tabular-nums">—</span> całości
+              </p>
+            </div>
           </div>
           <div
             class="bg-slate-800 rounded-xl p-3 border border-slate-700 col-span-2"
@@ -1933,6 +2068,17 @@
                   >Coaching / Aktywny</span
                 >
                 — stosunek czasu coachingu do czasu aktywnego.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium"
+                  >Coaching w trakcie</span
+                >
+                — łączny czas coachingu podczas czasu aktywnego, motoryki i techniki
+                w formacie mm:ss oraz jego procentowy udział w łącznym czasie treningu.
+              </li>
+              <li>
+                <span class="text-slate-200 font-medium">Coaching w sesji</span>
+                — suma czasu z licznika coachingu i coachingu w trakcie, wraz z udziałem w całym treningu.
               </li>
               <li>
                 <span class="text-slate-200 font-medium">Zmiany kategorii</span>

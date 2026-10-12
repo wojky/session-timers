@@ -79,17 +79,18 @@ export function updateCard(id, seconds, running) {
 
 }
 
-export function updateCoachingDuringControl(seconds, running, activeRunning) {
-  const button = document.getElementById('coaching-during-toggle');
-  const display = document.getElementById('coaching-during-display');
+export function updateCoachingDuringControl(id, seconds, running, parentRunning) {
+  const button = document.querySelector(`[data-coaching-during-toggle="${id}"]`);
+  const display = document.querySelector(`[data-coaching-during-display="${id}"]`);
   if (!button || !display) return;
 
   display.textContent = secondsToDisplay(seconds);
-  button.disabled = !activeRunning && !running;
+  button.disabled = !parentRunning && !running;
   button.setAttribute('aria-pressed', String(running));
   const actionLabel = running ? 'Pauza' : 'Start';
-  button.setAttribute('aria-label', `Coaching w trakcie — ${actionLabel}`);
-  button.title = `Coaching w trakcie — ${actionLabel}`;
+  const label = button.dataset.coachingDuringLabel;
+  button.setAttribute('aria-label', `${label} — ${actionLabel}`);
+  button.title = `${label} — ${actionLabel}`;
   button.classList.toggle('bg-amber-400', running);
   button.classList.toggle('text-white', running);
   button.classList.toggle('hover:bg-amber-500', running);
