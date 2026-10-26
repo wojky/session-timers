@@ -11,7 +11,7 @@
  * }
  */
 
-import { TIMER_IDS } from './timers.js';
+import { TIMER_IDS, COACHING_DURING_TIMER_IDS, getTimerState } from './timers.js';
 
 export const TIMER_LABELS = {
   dead:         'Martwy czas',
@@ -117,6 +117,138 @@ export function recordPause(id, currentSeconds) {
   delete _segmentContainsIn[id];
   _saveHistory();
   _logHistory();
+}
+
+export function getTagEntries() {
+  return history
+    .filter((entry) => entry.id === 'tag')
+    .sort((a, b) => Number(Boolean(b.isStartTag)) - Number(Boolean(a.isStartTag))
+      || (a.trainingSeconds ?? 0) - (b.trainingSeconds ?? 0)
+      || a.startedAt - b.startedAt);
+}
+
+export function ensureStartTag() {
+  const existing = history.find((entry) => entry.id === 'tag' && entry.isStartTag);
+  if (existing) return existing;
+
+  const firstEntry = history
+    .filter((entry) => entry.id !== 'tag')
+    .sort((a, b) => a.startedAt - b.startedAt)[0];
+  const startedAt = firstEntry
+    ? firstEntry.startedAt - (Number(firstEntry.trainingSeconds) || 0) * 1000
+    : Date.now();
+  const tag = {
+    id: 'tag',
+    label: 'Start treningu',
+    startedAt,
+    duration: 0,
+    cumulativeTotal: 0,
+    recordId: _newRecordId(),
+    trainingSeconds: 0,
+    isStartTag: true,
+  };
+  history.push(tag);
+  history.sort((a, b) => a.startedAt - b.startedAt);
+  _saveHistory();
+  return tag;
+}
+
+export function createTag(label, trainingSeconds, startedAt = Date.now()) {
+  const name = label.trim();
+  if (!name) throw new Error('Nazwa tagu nie może być pusta.');
+
+  const tag = {
+    id: 'tag',
+    label: name,
+    startedAt,
+    duration: 0,
+    cumulativeTotal: 0,
+    recordId: _newRecordId(),
+    trainingSeconds: Math.max(0, Number(trainingSeconds) || 0),
+  };
+  history.push(tag);
+  history.sort((a, b) => a.startedAt - b.startedAt);
+  _saveHistory();
+  return tag;
+}
+
+export function renameTag(recordId, label) {
+  const tag = history.find((entry) => entry.id === 'tag' && entry.recordId === recordId);
+  if (!tag) throw new Error('Nie znaleziono tagu do edycji.');
+  const name = label.trim();
+  if (!name) throw new Error('Nazwa tagu nie może być pusta.');
+  tag.label = name;
+  _saveHistory();
+}
+
+function _timestampAtTrainingSeconds(targetSeconds) {
+  const timerEntries = getHistorySnapshot()
+    .filter((entry) => TIMER_IDS.includes(entry.id) && entry.duration > 0)
+    .sort((a, b) => a.startedAt - b.startedAt);
+  if (timerEntries.length === 0) {
+    const startTag = history.find((entry) => entry.id === 'tag' && entry.isStartTag);
+    return (startTag?.startedAt ?? Date.now()) + targetSeconds * 1000;
+  }
+
+  let elapsedSeconds = 0;
+  for (const entry of timerEntries) {
+    const durationSeconds = entry.duration / 1000;
+    if (targetSeconds <= elapsedSeconds + durationSeconds) {
+      return Math.round(entry.startedAt + (targetSeconds - elapsedSeconds) * 1000);
+    }
+    elapsedSeconds += durationSeconds;
+  }
+
+  const lastEntry = timerEntries[timerEntries.length - 1];
+  return Math.round(lastEntry.startedAt + lastEntry.duration + (targetSeconds - elapsedSeconds) * 1000);
+}
+
+export function updateTagTimestamp(recordId, trainingSeconds) {
+  const tag = history.find((entry) => entry.id === 'tag' && entry.recordId === recordId);
+  if (!tag) throw new Error('Nie znaleziono tagu do edycji.');
+  if (tag.isStartTag) throw new Error('Nie można zmienić czasu taga początku treningu.');
+
+  const seconds = Number(trainingSeconds);
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    throw new Error('Czas taga musi być liczbą nieujemną.');
+  }
+
+  tag.trainingSeconds = Math.floor(seconds);
+  tag.startedAt = _timestampAtTrainingSeconds(tag.trainingSeconds);
+  history.sort((a, b) => a.startedAt - b.startedAt);
+  _saveHistory();
+}
+
+export function deleteTag(recordId) {
+  const index = history.findIndex((entry) => entry.id === 'tag' && entry.recordId === recordId);
+  if (index < 0) throw new Error('Nie znaleziono taga do usunięcia.');
+  if (history[index].isStartTag) throw new Error('Nie można usunąć taga początku treningu.');
+
+  history.splice(index, 1);
+  _saveHistory();
+}
+
+export function getHistorySnapshot() {
+  const entries = history.slice();
+  [...TIMER_IDS, ...COACHING_DURING_TIMER_IDS].forEach((id) => {
+    const startedAt = _segmentStart[id];
+    if (startedAt == null) return;
+
+    const duration = Math.max(0, (getTimerState(id).seconds - _segmentStartSeconds[id]) * 1000);
+    if (duration === 0) return;
+
+    const entry = {
+      id,
+      label: TIMER_LABELS[id] ?? id,
+      startedAt,
+      duration,
+      cumulativeTotal: 0,
+      recordId: _segmentRecordId[id],
+    };
+    if (_segmentContainsIn[id]) entry.containsIn = _segmentContainsIn[id];
+    entries.push(entry);
+  });
+  return entries;
 }
 
 /** Removes all history entries for a given timer (on reset). */

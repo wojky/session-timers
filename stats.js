@@ -3,8 +3,8 @@
  * Depends on Chart.js loaded as a global (window.Chart) via CDN script tag.
  */
 
-import { history, TIMER_LABELS } from './history.js';
-import { TIMER_IDS, COACHING_DURING_TIMER_IDS, getTimerState } from './timers.js';
+import { TIMER_LABELS, getHistorySnapshot, getTagEntries } from './history.js';
+import { TIMER_IDS, COACHING_DURING_TIMER_IDS } from './timers.js';
 
 /** Short abbreviations shown on the radar chart axes */
 export const TIMER_ABBR = {
@@ -34,6 +34,14 @@ let timelineChart = null;
 let entriesChart = null;
 /** @type {any|null} Chart.js coaching scatter instance */
 let coachingScatterChart = null;
+let _statsHistory = [];
+let _selectedTagIds = null;
+let _knownTagIds = new Set();
+
+export function resetTagFilterSelection() {
+  _selectedTagIds = null;
+  _knownTagIds = new Set();
+}
 
 function fmt(ms) {
   const totalSec = Math.floor(ms / 1000);
@@ -42,9 +50,9 @@ function fmt(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function computeStats() {
+function computeStats(entries) {
   return TIMER_IDS.map((id) => {
-    const segments = history.filter((e) => e.id === id);
+    const segments = entries.filter((e) => e.id === id);
     const total    = segments.reduce((sum, e) => sum + e.duration, 0);
     const count    = segments.length;
     const min      = count > 0 ? Math.min(...segments.map((e) => e.duration)) : null;
@@ -57,9 +65,15 @@ function computeStats() {
 let detailChart = null;
 
 export function renderStats() {
-  const stats      = computeStats();
+  const tags = getTagEntries();
+  _ensureTagSelection(tags);
+  _renderTagFilters(tags);
+  const allEntries = _getStatsEntries(getHistorySnapshot());
+  _statsHistory = _filterStatsEntries(allEntries, tags);
+  const allStats   = computeStats(allEntries);
+  const stats      = computeStats(_statsHistory);
   const grandTotal = stats.reduce((sum, s) => sum + s.total, 0);
-  _renderEmptyState(stats);
+  _renderEmptyState(allStats);
   _renderLegend(stats);
   _renderKPI(stats, grandTotal);
   _render100Bar(stats, grandTotal);
@@ -70,6 +84,88 @@ export function renderStats() {
   _renderCoachingScatter();
   _initDialog(stats, grandTotal);
 }
+
+function _ensureTagSelection(tags) {
+  const currentIds = new Set(tags.map((tag) => tag.recordId));
+  if (_selectedTagIds === null) {
+    _selectedTagIds = new Set(currentIds);
+  } else {
+    currentIds.forEach((id) => {
+      if (!_knownTagIds.has(id)) _selectedTagIds.add(id);
+    });
+    _selectedTagIds = new Set([..._selectedTagIds].filter((id) => currentIds.has(id)));
+  }
+  _knownTagIds = currentIds;
+}
+
+function _renderTagFilters(tags) {
+  const container = document.getElementById('stats-tag-filters');
+  if (!container) return;
+
+  const fragment = document.createDocumentFragment();
+  tags.forEach((tag) => {
+    const selected = _selectedTagIds.has(tag.recordId);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.statsTagId = tag.recordId;
+    button.setAttribute('aria-pressed', String(selected));
+    button.className = `inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
+      selected
+        ? 'border-indigo-500 bg-indigo-500/15 text-indigo-200'
+        : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500'
+    }`;
+
+    const name = document.createElement('span');
+    name.textContent = tag.label;
+    const time = document.createElement('span');
+    time.className = 'font-mono tabular-nums text-[10px] opacity-70';
+    time.textContent = fmt((Number(tag.trainingSeconds) || 0) * 1000);
+    button.append(name, time);
+    fragment.append(button);
+  });
+  container.replaceChildren(fragment);
+}
+
+function _getStatsEntries(entries) {
+  return entries.filter((entry) => entry.duration > 0
+    && (TIMER_IDS.includes(entry.id) || COACHING_DURING_TIMER_IDS.includes(entry.id)));
+}
+
+function _filterStatsEntries(entries, tags) {
+  if (tags.length === 0) return entries;
+
+  const intervals = tags.flatMap((tag, index) => {
+    if (!_selectedTagIds.has(tag.recordId)) return [];
+    return [{
+      tagId: tag.recordId,
+      start: tag.startedAt,
+      end: tags[index + 1]?.startedAt ?? Infinity,
+    }];
+  });
+
+  return entries.flatMap((entry) => {
+    const entryEnd = entry.startedAt + entry.duration;
+    const interval = intervals.find((range) =>
+      entry.startedAt >= range.start && entryEnd <= range.end
+    );
+    return interval ? [{ ...entry, tagIntervalId: interval.tagId }] : [];
+  });
+}
+
+const _statsTagFilters = document.getElementById('stats-tag-filters');
+_statsTagFilters?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-stats-tag-id]');
+  if (!button) return;
+  const id = button.dataset.statsTagId;
+  if (_selectedTagIds.has(id)) _selectedTagIds.delete(id);
+  else _selectedTagIds.add(id);
+  renderStats();
+});
+
+document.getElementById('stats-tags-select-all')?.addEventListener('click', () => {
+  _selectedTagIds = new Set(getTagEntries().map((tag) => tag.recordId));
+  renderStats();
+});
 
 function _renderEmptyState(stats) {
   const empty   = document.getElementById('stats-empty');
@@ -136,10 +232,10 @@ function _renderTable(stats, grandTotal) {
 }
 
 function _buildTimelineDatasets() {
-  if (history.length === 0) return [];
-  const t0 = Math.min(...history.map((e) => e.startedAt));
+  if (_statsHistory.length === 0) return [];
+  const t0 = Math.min(..._statsHistory.map((e) => e.startedAt));
   return TIMER_IDS.map((id) => {
-    const segments = history
+    const segments = _statsHistory
       .filter((e) => e.id === id)
       .sort((a, b) => a.startedAt - b.startedAt);
     let cum = 0;
@@ -176,8 +272,8 @@ function _renderTimeline() {
   // Scale chart width: 50px per 10-minute tick, based on max timeline x value
   const wrapper = document.getElementById('timeline-wrapper');
   if (wrapper) {
-    const maxSec = history.length > 0
-      ? Math.max(...history.map((e) => Math.round((e.startedAt + e.duration - Math.min(...history.map((x) => x.startedAt))) / 1000)))
+    const maxSec = _statsHistory.length > 0
+      ? Math.max(..._statsHistory.map((e) => Math.round((e.startedAt + e.duration - Math.min(..._statsHistory.map((x) => x.startedAt))) / 1000)))
       : 0;
     const ticks = Math.ceil(maxSec / 600) || 1;
     const minW = Math.max(200, ticks * 50);
@@ -358,8 +454,8 @@ function _renderDetailScatter(s) {
 
   if (detailChart) { detailChart.destroy(); detailChart = null; }
 
-  const t0       = history.length > 0 ? Math.min(...history.map((e) => e.startedAt)) : 0;
-  const segments = history
+  const t0       = _statsHistory.length > 0 ? Math.min(..._statsHistory.map((e) => e.startedAt)) : 0;
+  const segments = _statsHistory
     .filter((e) => e.id === s.id)
     .sort((a, b) => a.startedAt - b.startedAt);
 
@@ -435,11 +531,11 @@ function _renderKPI(stats, grandTotal) {
   const active       = stats.find(s => s.id === 'active');
   const instructions = stats.find(s => s.id === 'instructions');
   const coaching     = stats.find(s => s.id === 'coaching');
-  const coachingDuringTotal = COACHING_DURING_TIMER_IDS
-    .reduce((sum, id) => sum + getTimerState(id).ms, 0);
-  const coachingSessionTotal = coachingDuringTotal + getTimerState('coaching').ms;
-  const trainingTimeTotal = TIMER_IDS
-    .reduce((sum, id) => sum + getTimerState(id).ms, 0);
+  const coachingDuringTotal = _statsHistory
+    .filter((entry) => COACHING_DURING_TIMER_IDS.includes(entry.id))
+    .reduce((sum, entry) => sum + entry.duration, 0);
+  const coachingSessionTotal = coachingDuringTotal + (coaching?.total ?? 0);
+  const trainingTimeTotal = grandTotal;
 
   const deadPct    = grandTotal > 0 ? Math.round((dead.total / grandTotal) * 100)         : 0;
   const activePct  = grandTotal > 0 ? Math.round((active.total / grandTotal) * 100)       : 0;
@@ -452,12 +548,15 @@ function _renderKPI(stats, grandTotal) {
   const instrRatio = active?.total > 0 ? (instructions.total / active.total).toFixed(2)  : '\u2014';
   const coachRatio = active?.total > 0 ? (coaching.total / active.total).toFixed(2)      : '\u2014';
 
-  const sorted  = [...history].sort((a, b) => a.startedAt - b.startedAt);
-  const changes = sorted.reduce((n, seg, i) => i > 0 && seg.id !== sorted[i - 1].id ? n + 1 : n, 0);
+  const sorted  = [..._statsHistory].sort((a, b) => a.startedAt - b.startedAt);
+  const changes = sorted.reduce((n, seg, i) =>
+    i > 0 && seg.tagIntervalId === sorted[i - 1].tagIntervalId && seg.id !== sorted[i - 1].id
+      ? n + 1
+      : n, 0);
 
   // Time to first coaching from training start
-  const t0 = history.length > 0 ? Math.min(...history.map(e => e.startedAt)) : 0;
-  const firstCoaching = history.filter(e => e.id === 'coaching').sort((a, b) => a.startedAt - b.startedAt)[0];
+  const t0 = _statsHistory.length > 0 ? Math.min(..._statsHistory.map(e => e.startedAt)) : 0;
+  const firstCoaching = _statsHistory.filter(e => e.id === 'coaching').sort((a, b) => a.startedAt - b.startedAt)[0];
   const firstCoachingTime = firstCoaching ? Math.round((firstCoaching.startedAt - t0) / 1000) * 1000 : null;
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val); };
@@ -549,7 +648,7 @@ function _renderEntriesChart(stats) {
             label: (ctx) => {
               const s = stats[ctx.dataIndex];
               if (s.count === 0) return ['  Brak danych'];
-              const durations = history.filter(e => e.id === s.id).map(e => e.duration);
+              const durations = _statsHistory.filter(e => e.id === s.id).map(e => e.duration);
               const avgMs    = Math.round(s.total / s.count);
               const medianMs = _median(durations);
               return [
@@ -594,7 +693,7 @@ function _renderCoachingScatter() {
   if (!canvas || typeof Chart === 'undefined') return;
   if (coachingScatterChart) { coachingScatterChart.destroy(); coachingScatterChart = null; }
 
-  const sorted = [...history].sort((a, b) => a.startedAt - b.startedAt);
+  const sorted = [..._statsHistory].sort((a, b) => a.startedAt - b.startedAt);
   const t0     = sorted.length > 0 ? sorted[0].startedAt : 0;
 
   // Build points: find consecutive active → coaching transitions
@@ -602,7 +701,7 @@ function _renderCoachingScatter() {
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const curr = sorted[i];
-    if (prev.id === 'active' && curr.id === 'coaching') {
+    if (prev.id === 'active' && curr.id === 'coaching' && prev.tagIntervalId === curr.tagIntervalId) {
       points.push({
         x:             Math.round((curr.startedAt - t0) / 1000),
         y:             Math.round(prev.duration / 1000),

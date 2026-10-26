@@ -106,9 +106,11 @@ import {
   updateCoachingDuringControl,
 } from './ui.js';
 
-import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS, createRecordId, getTrainingSecondsAt } from './history.js';
-import { renderStats } from './stats.js';
+import { recordStart, recordPause, clearTimerHistory, clearAllHistory, history, recordNote, setNoteRating, TIMER_LABELS, createRecordId, getTrainingSecondsAt, getTagEntries, ensureStartTag, createTag, renameTag, updateTagTimestamp, deleteTag } from './history.js';
+import { renderStats, resetTagFilterSelection } from './stats.js';
 import { closeSettings } from './settings.js';
+
+ensureStartTag();
 
 // ── State change → history ─────────────────────────────────────────────────────
 const _timerRecordIds = {};
@@ -310,6 +312,8 @@ document.getElementById('btn-new-session').addEventListener('click', async () =>
   });
   COACHING_DURING_TIMER_IDS.forEach(resetTimer);
   clearAllHistory();
+  resetTagFilterSelection();
+  ensureStartTag();
 
   const visibility = _loadVisibility();
   [...TIMER_IDS, ...COACHING_DURING_TIMER_IDS].forEach((id) => {
@@ -394,8 +398,8 @@ function _buildExportFilename(custom) {
 }
 
 function _doExportCSV(filename) {
-  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz', 'ID wpisu', 'Zawiera się w', 'Czas treningu (s)']];
-  history.forEach((entry, i) => {
+  const rows = [['Lp.', 'Licznik', 'Start (czas lokalny)', 'Czas trwania (ms)', 'Komentarz', 'ID wpisu', 'Zawiera się w', 'Czas treningu (s)', 'Typ wpisu', 'Rodzaj taga']];
+  [...history].sort((a, b) => a.startedAt - b.startedAt).forEach((entry, i) => {
     const startLocal = new Date(entry.startedAt).toLocaleString('pl-PL');
     rows.push([
       String(i + 1),
@@ -409,7 +413,9 @@ function _doExportCSV(filename) {
       entry.containsIn ?? '',
       entry.id === 'note'
         ? String(entry.trainingSeconds ?? getTrainingSecondsAt(entry.startedAt))
-        : '',
+        : entry.id === 'tag' ? String(entry.trainingSeconds ?? 0) : '',
+      entry.id === 'tag' ? 'tag' : '',
+      entry.isStartTag ? 'start' : '',
     ]);
   });
   const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -485,6 +491,7 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
     TIMER_IDS.forEach((id) => { resetTimer(id); updateCard(id, 0, false); });
     COACHING_DURING_TIMER_IDS.forEach(resetTimer);
     clearAllHistory();
+    resetTagFilterSelection();
 
     // Build label→id map from TIMER_LABELS
     const labelToId = Object.fromEntries(
@@ -518,6 +525,7 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       // columns: Lp., Licznik, Start (czas lokalny), Czas trwania (ms), Komentarz
       const label    = cols[1]?.trim() ?? '';
       const duration = parseInt(cols[3] ?? '0', 10) * durationScale;
+      const isTag = cols[8]?.trim() === 'tag';
       const comment  = cols[4]?.trim() ?? '';
       const recordId = cols[5]?.trim() || createRecordId();
       const containsIn = cols[6]?.trim() || null;
@@ -531,9 +539,21 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
       const startedAt = parsePlDate(cols[2] ?? '') ?? (Date.now() - (lines.length - i) * 1000);
 
       const id = labelToId[label];
-      if (!id && label !== 'Notatka') continue; // skip unknown rows
+      if (!id && !isTag && label !== 'Notatka') continue; // skip unknown rows
 
-      if (label === 'Notatka' && comment) {
+      if (isTag) {
+        const entry = {
+          id: 'tag',
+          label,
+          startedAt,
+          duration: 0,
+          cumulativeTotal: 0,
+          recordId,
+          trainingSeconds: Math.max(0, trainingSeconds ?? 0),
+          isStartTag: cols[9]?.trim() === 'start',
+        };
+        history.push(entry);
+      } else if (label === 'Notatka' && comment) {
         // Parse rating prefix: "1*", "-1*", "0*"
         let rating = null;
         let text = comment;
@@ -556,6 +576,7 @@ document.getElementById('btn-import-csv')?.addEventListener('change', (e) => {
     }
 
     if (imported > 0) {
+      ensureStartTag();
       try { localStorage.setItem('session-timer-history', JSON.stringify(history)); } catch (_) {}
 
       // Apply accumulated per-timer totals to timer state and UI
@@ -863,6 +884,122 @@ document.querySelectorAll('[data-visibility-preset]').forEach((button) => {
     });
     localStorage.setItem(_LS_VISIBILITY_KEY, JSON.stringify(visibility));
   });
+});
+
+const _tagDialog = document.getElementById('tag-dialog');
+const _tagList = document.getElementById('tag-list');
+const _tagNameInput = document.getElementById('tag-name-input');
+
+function _currentTrainingSeconds() {
+  return TIMER_IDS.reduce((sum, id) => sum + getTimerState(id).seconds, 0);
+}
+
+function _renderTagList() {
+  const fragment = document.createDocumentFragment();
+  getTagEntries().forEach((tag) => {
+    const row = document.createElement('div');
+    row.dataset.tagRecordId = tag.recordId;
+    row.dataset.startTag = String(Boolean(tag.isStartTag));
+    row.className = 'flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2';
+
+    const timestamp = document.createElement(tag.isStartTag ? 'span' : 'input');
+    const timestampText = secondsToDisplay(Math.floor(tag.trainingSeconds ?? 0));
+    timestamp.className = tag.isStartTag
+      ? 'w-16 flex-shrink-0 text-xs font-mono tabular-nums text-slate-400'
+      : 'w-16 flex-shrink-0 rounded-lg border border-slate-700 bg-slate-800 px-1.5 py-1 text-center text-xs font-mono tabular-nums text-slate-200 focus:outline-none focus:border-indigo-500';
+    timestamp.textContent = tag.isStartTag ? timestampText : '';
+    if (!tag.isStartTag) {
+      timestamp.type = 'text';
+      timestamp.inputMode = 'numeric';
+      timestamp.maxLength = 9;
+      timestamp.value = timestampText;
+      timestamp.dataset.tagTimestamp = tag.recordId;
+      timestamp.setAttribute('aria-label', `Czas tagu ${tag.label}, format mm:ss`);
+      timestamp.title = 'Czas w formacie mm:ss';
+    }
+
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.maxLength = 60;
+    name.value = tag.label;
+    name.dataset.tagName = tag.recordId;
+    name.setAttribute('aria-label', `Nazwa tagu, ${timestampText}`);
+    name.className = 'min-w-0 flex-1 bg-transparent text-sm text-slate-200 focus:outline-none focus:text-white';
+
+    row.append(timestamp, name);
+    if (!tag.isStartTag) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.dataset.tagDelete = tag.recordId;
+      remove.className = 'flex-shrink-0 p-1 text-slate-500 hover:text-red-400 transition-colors';
+      remove.setAttribute('aria-label', `Usuń tag ${tag.label}`);
+      remove.title = 'Usuń tag';
+      remove.innerHTML = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>';
+      row.append(remove);
+    }
+    fragment.append(row);
+  });
+  _tagList.replaceChildren(fragment);
+}
+
+document.getElementById('btn-tag').addEventListener('click', () => {
+  _renderTagList();
+  _tagDialog.showModal();
+  _tagNameInput.focus();
+});
+
+document.getElementById('tag-dialog-close').addEventListener('click', () => _tagDialog.close());
+_tagDialog.addEventListener('click', (event) => {
+  if (event.target === _tagDialog) _tagDialog.close();
+});
+
+document.getElementById('tag-add-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const label = _tagNameInput.value.trim();
+  if (!label) {
+    _tagNameInput.reportValidity();
+    return;
+  }
+  createTag(label, _currentTrainingSeconds());
+  _tagNameInput.value = '';
+  _renderTagList();
+  _tagNameInput.focus();
+});
+
+_tagList.addEventListener('change', (event) => {
+  const timestampInput = event.target.closest('[data-tag-timestamp]');
+  if (timestampInput) {
+    const match = timestampInput.value.trim().match(/^(\d+):([0-5]\d)$/);
+    const minutes = match ? Number(match[1]) : NaN;
+    const seconds = match ? Number(match[2]) : NaN;
+    const totalSeconds = minutes * 60 + seconds;
+    if (!Number.isSafeInteger(totalSeconds)) {
+      timestampInput.setCustomValidity('Wpisz czas w formacie mm:ss, na przykład 02:15.');
+      timestampInput.reportValidity();
+      return;
+    }
+    timestampInput.setCustomValidity('');
+    updateTagTimestamp(timestampInput.dataset.tagTimestamp, totalSeconds);
+    _renderTagList();
+    return;
+  }
+
+  const input = event.target.closest('[data-tag-name]');
+  if (!input) return;
+  const label = input.value.trim();
+  if (!label) {
+    _renderTagList();
+    return;
+  }
+  renameTag(input.dataset.tagName, label);
+  _renderTagList();
+});
+
+_tagList.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-tag-delete]');
+  if (!button) return;
+  deleteTag(button.dataset.tagDelete);
+  _renderTagList();
 });
 
 // ── History dialog ────────────────────────────────────────────────────────────

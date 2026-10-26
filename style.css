@@ -23,6 +23,7 @@
 /* Dialogs: notes, record, export, category */
 #notes-dialog,
 #record-dialog,
+#tag-dialog,
 #export-dialog,
 #category-dialog {
   margin: auto;
@@ -46,6 +47,7 @@
 }
 #notes-dialog::backdrop,
 #record-dialog::backdrop,
+#tag-dialog::backdrop,
 #export-dialog::backdrop,
 #category-dialog::backdrop,
 #history-dialog::backdrop,
