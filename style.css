@@ -9,6 +9,87 @@
   min-height: 0;
 }
 
+.stats-time-range {
+  box-sizing: border-box;
+  height: 1.5rem;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+  touch-action: pan-y;
+  width: 100%;
+}
+.stats-time-range-track,
+.stats-time-range-selection {
+  height: 0.25rem;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+}
+.stats-time-range-track {
+  left: 0.5rem;
+  right: 0.5rem;
+  background: #334155;
+}
+.stats-time-range-selection {
+  background: #818cf8;
+}
+.stats-time-range-input {
+  appearance: none;
+  background: transparent;
+  box-sizing: border-box;
+  height: 1.5rem;
+  left: 0;
+  margin: 0;
+  max-width: 100%;
+  outline: none;
+  padding: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.stats-time-range-input::-webkit-slider-runnable-track {
+  appearance: none;
+  background: transparent;
+  height: 0.25rem;
+}
+.stats-time-range-input::-moz-range-track {
+  background: transparent;
+  height: 0.25rem;
+}
+.stats-time-range-input::-webkit-slider-thumb {
+  appearance: none;
+  background: #c7d2fe;
+  border: 2px solid #6366f1;
+  border-radius: 50%;
+  cursor: grab;
+  height: 1rem;
+  margin-top: -0.375rem;
+  pointer-events: auto;
+  width: 1rem;
+}
+.stats-time-range-input::-moz-range-thumb {
+  background: #c7d2fe;
+  border: 2px solid #6366f1;
+  border-radius: 50%;
+  cursor: grab;
+  height: 1rem;
+  pointer-events: auto;
+  width: 1rem;
+}
+.stats-time-range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 35%);
+}
+.stats-time-range-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 35%);
+}
+.stats-time-range-input:disabled::-webkit-slider-thumb,
+.stats-time-range-input:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Visibility toggle switch */
 .timer-visibility-toggle:not(:checked) ~ .visibility-switch {
   background-color: #475569; /* slate-600 */
@@ -45,6 +126,18 @@
   max-height: calc(100dvh - 1.5rem);   /* modern */
   overflow: hidden;
 }
+/* Keep small modals inside the viewport (with side gutters) */
+#tag-dialog,
+#time-range-dialog {
+  box-sizing: border-box;
+  width: calc(100% - 1.5rem);
+  max-width: 24rem;
+}
+#tag-dialog *,
+#time-range-dialog * {
+  min-width: 0;
+}
+#time-range-dialog::backdrop,
 #notes-dialog::backdrop,
 #record-dialog::backdrop,
 #tag-dialog::backdrop,

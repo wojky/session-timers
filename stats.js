@@ -37,6 +37,10 @@ let coachingScatterChart = null;
 let _statsHistory = [];
 let _selectedTagIds = null;
 let _knownTagIds = new Set();
+let _statsOriginAt = 0;
+let _timelineMaxSeconds = 0;
+let _timeRangeStart = null;
+let _timeRangeEnd = null;
 
 export function resetTagFilterSelection() {
   _selectedTagIds = null;
@@ -69,7 +73,9 @@ export function renderStats() {
   _ensureTagSelection(tags);
   _renderTagFilters(tags);
   const allEntries = _getStatsEntries(getHistorySnapshot());
-  _statsHistory = _filterStatsEntries(allEntries, tags);
+  _updateTimelineBounds(allEntries);
+  _renderTimeRange();
+  _statsHistory = _filterTimeRange(_filterStatsEntries(allEntries, tags));
   const allStats   = computeStats(allEntries);
   const stats      = computeStats(_statsHistory);
   const grandTotal = stats.reduce((sum, s) => sum + s.total, 0);
@@ -152,6 +158,69 @@ function _filterStatsEntries(entries, tags) {
   });
 }
 
+function _updateTimelineBounds(entries) {
+  const previousMax = _timelineMaxSeconds;
+  if (entries.length === 0) {
+    _statsOriginAt = 0;
+    _timelineMaxSeconds = 0;
+    _timeRangeStart = 0;
+    _timeRangeEnd = 0;
+    return;
+  }
+
+  _statsOriginAt = Math.min(...entries.map((entry) => entry.startedAt));
+  const latestEnd = Math.max(...entries.map((entry) => entry.startedAt + entry.duration));
+  _timelineMaxSeconds = Math.ceil((latestEnd - _statsOriginAt) / 1000);
+  if (_timeRangeStart === null || _timeRangeEnd === null) {
+    _timeRangeStart = 0;
+    _timeRangeEnd = _timelineMaxSeconds;
+    return;
+  }
+
+  const wasFullRange = _timeRangeEnd >= previousMax;
+  _timeRangeStart = Math.min(_timeRangeStart, Math.max(0, _timelineMaxSeconds - 1));
+  _timeRangeEnd = wasFullRange
+    ? _timelineMaxSeconds
+    : Math.max(_timeRangeStart + 1, Math.min(_timeRangeEnd, _timelineMaxSeconds));
+}
+
+function _renderTimeRange() {
+  const startInput = document.getElementById('stats-time-range-start');
+  const endInput = document.getElementById('stats-time-range-end');
+  const label = document.getElementById('stats-time-range-label');
+  const selection = document.getElementById('stats-time-range-selection');
+  if (!startInput || !endInput || !label || !selection) return;
+
+  const max = Math.max(1, _timelineMaxSeconds);
+  const start = _timeRangeStart ?? 0;
+  const end = _timeRangeEnd ?? _timelineMaxSeconds;
+  startInput.max = String(Math.max(0, end - 1));
+  startInput.value = String(start);
+  endInput.min = String(Math.min(_timelineMaxSeconds, start + 1));
+  endInput.max = String(max);
+  endInput.value = String(end || max);
+  startInput.disabled = _timelineMaxSeconds === 0;
+  endInput.disabled = _timelineMaxSeconds === 0;
+  label.textContent = `${fmt(start * 1000)}–${fmt(end * 1000)}`;
+  const left = (_timelineMaxSeconds > 0 ? start / _timelineMaxSeconds : 0) * 100;
+  const right = (_timelineMaxSeconds > 0 ? end / _timelineMaxSeconds : 100) * 100;
+  selection.style.left = `calc(0.5rem + (100% - 1rem) * ${left / 100})`;
+  selection.style.width = `calc((100% - 1rem) * ${Math.max(0, right - left) / 100})`;
+}
+
+function _filterTimeRange(entries) {
+  if (_timelineMaxSeconds === 0) return entries;
+  const startAt = _statsOriginAt + (_timeRangeStart ?? 0) * 1000;
+  const endAt = _statsOriginAt + (_timeRangeEnd ?? _timelineMaxSeconds) * 1000;
+  return entries.flatMap((entry) => {
+    const clippedStart = Math.max(entry.startedAt, startAt);
+    const clippedEnd = Math.min(entry.startedAt + entry.duration, endAt);
+    return clippedEnd > clippedStart
+      ? [{ ...entry, startedAt: clippedStart, duration: clippedEnd - clippedStart }]
+      : [];
+  });
+}
+
 const _statsTagFilters = document.getElementById('stats-tag-filters');
 _statsTagFilters?.addEventListener('click', (event) => {
   const button = event.target.closest('[data-stats-tag-id]');
@@ -167,6 +236,66 @@ document.getElementById('stats-tags-select-all')?.addEventListener('click', () =
   renderStats();
 });
 
+document.getElementById('stats-time-range-start')?.addEventListener('input', (event) => {
+  _timeRangeStart = Number(event.target.value);
+  renderStats();
+});
+
+document.getElementById('stats-time-range-end')?.addEventListener('input', (event) => {
+  _timeRangeEnd = Number(event.target.value);
+  renderStats();
+});
+
+document.getElementById('stats-time-range-reset')?.addEventListener('click', () => {
+  _timeRangeStart = 0;
+  _timeRangeEnd = _timelineMaxSeconds;
+  renderStats();
+});
+
+const _rangeDialog = document.getElementById('time-range-dialog');
+const _rangeStartInput = document.getElementById('time-range-start-input');
+const _rangeEndInput = document.getElementById('time-range-end-input');
+const _rangeError = document.getElementById('time-range-error');
+
+function _parseMmSs(value) {
+  const match = value.trim().match(/^(\d+):([0-5]\d)$/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+document.getElementById('stats-time-range-label')?.addEventListener('click', () => {
+  if (!_rangeDialog || _timelineMaxSeconds === 0) return;
+  _rangeStartInput.value = fmt((_timeRangeStart ?? 0) * 1000);
+  _rangeEndInput.value = fmt((_timeRangeEnd ?? _timelineMaxSeconds) * 1000);
+  _rangeError.classList.add('hidden');
+  document.getElementById('time-range-hint').textContent =
+    `Dostępny zakres: 00:00–${fmt(_timelineMaxSeconds * 1000)}`;
+  _rangeDialog.showModal();
+});
+
+document.getElementById('time-range-form')?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const start = _parseMmSs(_rangeStartInput.value);
+  const end = _parseMmSs(_rangeEndInput.value);
+  let error = '';
+  if (start === null || end === null) error = 'Wpisz czas w formacie mm:ss, na przykład 02:15.';
+  else if (start >= end) error = 'Początek musi być wcześniejszy niż koniec.';
+  else if (end > _timelineMaxSeconds) error = `Koniec nie może przekraczać ${fmt(_timelineMaxSeconds * 1000)}.`;
+  if (error) {
+    _rangeError.textContent = error;
+    _rangeError.classList.remove('hidden');
+    return;
+  }
+  _timeRangeStart = start;
+  _timeRangeEnd = end;
+  _rangeDialog.close();
+  renderStats();
+});
+
+const _closeRangeDialog = () => _rangeDialog?.close();
+document.getElementById('time-range-cancel')?.addEventListener('click', _closeRangeDialog);
+document.getElementById('time-range-dialog-close')?.addEventListener('click', _closeRangeDialog);
+_rangeDialog?.addEventListener('click', (event) => { if (event.target === _rangeDialog) _closeRangeDialog(); });
+
 function _renderEmptyState(stats) {
   const empty   = document.getElementById('stats-empty');
   const content = document.getElementById('stats-content');
@@ -176,6 +305,8 @@ function _renderEmptyState(stats) {
   empty.classList.toggle('hidden', hasData);
   content.classList.toggle('hidden', !hasData);
   legend?.classList.toggle('hidden', !hasData);
+  document.getElementById('stats-filters')?.classList.toggle('hidden', !hasData);
+  document.getElementById('stats-sticky-bar')?.classList.toggle('hidden', !hasData);
 }
 
 function _renderLegend(stats) {
@@ -233,15 +364,15 @@ function _renderTable(stats, grandTotal) {
 
 function _buildTimelineDatasets() {
   if (_statsHistory.length === 0) return [];
-  const t0 = Math.min(..._statsHistory.map((e) => e.startedAt));
+  const startSec = _timeRangeStart ?? 0;
   return TIMER_IDS.map((id) => {
     const segments = _statsHistory
       .filter((e) => e.id === id)
       .sort((a, b) => a.startedAt - b.startedAt);
     let cum = 0;
-    const data = [{ x: 0, y: 0 }];
+    const data = [{ x: startSec, y: 0 }];
     segments.forEach((seg) => {
-      const endSec = Math.round((seg.startedAt + seg.duration - t0) / 1000);
+      const endSec = Math.round((seg.startedAt + seg.duration - _statsOriginAt) / 1000);
       cum += seg.duration;
       data.push({ x: endSec, y: cum });
     });
@@ -272,10 +403,8 @@ function _renderTimeline() {
   // Scale chart width: 50px per 10-minute tick, based on max timeline x value
   const wrapper = document.getElementById('timeline-wrapper');
   if (wrapper) {
-    const maxSec = _statsHistory.length > 0
-      ? Math.max(..._statsHistory.map((e) => Math.round((e.startedAt + e.duration - Math.min(..._statsHistory.map((x) => x.startedAt))) / 1000)))
-      : 0;
-    const ticks = Math.ceil(maxSec / 600) || 1;
+    const rangeSeconds = (_timeRangeEnd ?? _timelineMaxSeconds) - (_timeRangeStart ?? 0);
+    const ticks = Math.ceil(rangeSeconds / 600) || 1;
     const minW = Math.max(200, ticks * 50);
     wrapper.style.width = minW + 'px';
   }
@@ -304,6 +433,8 @@ function _renderTimeline() {
       scales: {
         x: {
           type:  'linear',
+          min:   _timeRangeStart ?? 0,
+          max:   Math.max(_timelineMaxSeconds, (_timeRangeEnd ?? 0), (_timeRangeStart ?? 0) + 1),
           grid:  { color: 'rgba(148,163,184,0.07)' },
           border: { color: 'rgba(148,163,184,0.15)' },
           ticks: {
