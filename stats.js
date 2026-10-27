@@ -194,11 +194,15 @@ function _renderTimeRange() {
   const max = Math.max(1, _timelineMaxSeconds);
   const start = _timeRangeStart ?? 0;
   const end = _timeRangeEnd ?? _timelineMaxSeconds;
-  startInput.max = String(Math.max(0, end - 1));
+  startInput.min = '0';
+  startInput.max = String(max);
   startInput.value = String(start);
-  endInput.min = String(Math.min(_timelineMaxSeconds, start + 1));
+  endInput.min = '0';
   endInput.max = String(max);
   endInput.value = String(end || max);
+  // Keep the thumb that can still move reachable when both sit at an edge
+  startInput.style.zIndex = start > max / 2 ? '2' : '1';
+  endInput.style.zIndex = start > max / 2 ? '1' : '2';
   startInput.disabled = _timelineMaxSeconds === 0;
   endInput.disabled = _timelineMaxSeconds === 0;
   label.textContent = `${fmt(start * 1000)}–${fmt(end * 1000)}`;
@@ -237,12 +241,14 @@ document.getElementById('stats-tags-select-all')?.addEventListener('click', () =
 });
 
 document.getElementById('stats-time-range-start')?.addEventListener('input', (event) => {
-  _timeRangeStart = Number(event.target.value);
+  const end = _timeRangeEnd ?? _timelineMaxSeconds;
+  _timeRangeStart = Math.min(Number(event.target.value), Math.max(0, end - 1));
   renderStats();
 });
 
 document.getElementById('stats-time-range-end')?.addEventListener('input', (event) => {
-  _timeRangeEnd = Number(event.target.value);
+  const start = _timeRangeStart ?? 0;
+  _timeRangeEnd = Math.max(Number(event.target.value), Math.min(_timelineMaxSeconds, start + 1));
   renderStats();
 });
 
